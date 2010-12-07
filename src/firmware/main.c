@@ -23,9 +23,10 @@
 #include <libopenstm32/spi.h>     // debug, remove later
 
 #include "ob_stdio.h"
+#include "ob_screen.h"
 #include "config.h"
 
-extern void _etext, _data, _edata, _bss, _ebss, _stack;
+//extern void _etext, _data, _edata, _bss, _ebss, _stack;
 
 void clock_setup(void)
 {
@@ -33,6 +34,7 @@ void clock_setup(void)
 
 	/* Enable GPIOC clock. */
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
+
 }
 
 void gpio_setup(void)
@@ -61,16 +63,27 @@ void usart_setup(void) {
 
 int main(void) {
 	int i;
-  __builtin_memcpy(&_data, &_etext, &_edata - &_data);
-  __builtin_memset(&_bss, 0, &_ebss - &_bss);
+//  __builtin_memcpy(&_data, &_etext, &_edata - &_data);
+//  __builtin_memset(&_bss, 0, &_ebss - &_bss);
 
 	clock_setup();
 	gpio_setup();
 	usart_setup();
+  ob_screen_setup();
 
-  ob_printf("Hello world\n");
+//  ob_screen_set_bl(65535);
 
-  while(1) {;}
+  ob_printf("Hello world the answer is %d\n", 42);
+
+  unsigned short l = 0;
+  ob_screen_set_bl(16384);
+
+  while(1) {
+    ob_screen_set_bl(l);
+    l += 128;
+  //  ob_printf("%d\n", l);
+    for(i=0;i<10000;i++);
+  }
 
 	return 0;
 }

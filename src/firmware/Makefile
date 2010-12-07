@@ -17,7 +17,12 @@ LDFLAGS		= -nostartfiles \
 		  -L/usr/local/cross-arm/lib/gcc/arm-softfloat-elf/4.4.3/thumb \
 		  -T$(LDSCRIPT)
 
-OBJS		= $(BINARY).o ob_printf.o
+OBJS		= $(BINARY).o \
+			ob_printf.o	\
+			ob_string_case.o	\
+			ob_itoa.o	\
+			ob_strlen.o	\
+			ob_screen.o
 
 OPENOCD_BASE	= /usr
 OPENOCD		= $(OPENOCD_BASE)/bin/openocd

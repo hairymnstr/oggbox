@@ -20,28 +20,83 @@
 #include <libopenstm32/rcc.h>
 #include <libopenstm32/gpio.h>
 #include <libopenstm32/usart.h>
-
+#include <stdarg.h>
+#include "ob_string.h"
 #include "config.h"
 
-void usart_putc(char c) {
-  usart_send(USART2, c);
-}
-
-u8 usart_getc() {
-  return usart_recv(USART2);
-}
-
-void usart_puts(char *s) {
-  while(*s != 0) {
-    usart_putc(*s++);
-  }
-}
-
 int ob_printf(const char *format, ...) {
-  int i=0;
-  while(*format != 0) {
-    usart_send(DBG_URT, *format++);
-    i++;
+  int i=0, j;
+  va_list args;
+  int pad;
+  char pad_char;
+  const char *fc = format;
+  char buf[33], *bc;
+  
+  va_start(args, format);
+
+  while((*fc) != 0) {
+    if((*fc) == '%') {
+      fc++;
+      pad = 0;
+      pad_char = ' ';
+      if(*fc == '0') {
+        pad_char = '0';
+        fc++;
+      }
+      while(((*fc) >= '0') && ((*fc) <= '9')) {
+        pad *= 10;
+        pad += ((*fc++) - '0');
+      }
+      switch(*fc) {
+        case '%':
+          usart_send(DBG_URT, *fc++);
+          break;
+        case 'd':
+          ob_itoa(va_arg(args, int), buf, 10);
+          bc = buf;
+          goto output_buffer;
+        case 'x':
+          ob_itoa(va_arg(args, int), buf, 16);
+          bc = buf;
+          goto output_buffer;
+        case 'X':
+          ob_itoa(va_arg(args, int), buf, 16);
+          ob_strtuc(buf);
+
+output_buffer:
+          bc = buf;
+          for(j=0;j<pad - ob_strlen(buf);j++) {
+            usart_send(DBG_URT, pad_char);
+            i++;
+          }
+          while((*bc) != 0) {
+            usart_send(DBG_URT, *bc++);
+            i++;
+          }
+          fc++;
+          break;
+        case 'p':
+          ob_itoa(va_arg(args, int), buf, 16);
+          bc = buf;
+          usart_send(DBG_URT, '0');
+          i++;
+          usart_send(DBG_URT, 'x');
+          i++;
+          while((*bc) != 0) {
+            usart_send(DBG_URT, *bc++);
+            i++;
+          }
+          fc++;
+          break;
+        default:
+          usart_send(DBG_URT, *fc++);
+          i++;
+      }
+    } else {
+      usart_send(DBG_URT, *fc++);
+      i++;
+    }
+    va_end(args);
   }
   return i;
 }
