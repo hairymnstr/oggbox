@@ -78,9 +78,19 @@ int main(void) {
   unsigned short l = 0;
   ob_screen_set_bl(16384);
 
+  ob_screen_set_contrast(32768);
+
+  ob_screen_startup();
+
+  ob_printf("running screen test\n");
+
+  ob_screen_test();
+
+  ob_printf("Screen running\n");
+
   while(1) {
-    ob_screen_set_bl(l);
-    l += 128;
+    //ob_screen_set_bl(l);
+    //l += 128;
   //  ob_printf("%d\n", l);
     for(i=0;i<10000;i++);
   }

@@ -8,7 +8,7 @@ char *ob_itoa(int value, char *str, int base) {
   }
   cb = base;
   for(i=bc-1;i>=0;i--) {
-    str[i] = (value % cb);
+    str[i] = (value % base);
     value = value / cb;
     cb *= base;
   }
