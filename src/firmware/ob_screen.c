@@ -89,9 +89,9 @@ void ob_screen_instruction(unsigned char code, unsigned char val) {
   
   /* wait for screen to be ready */
   do {
-    for(i=0;i<1000;i++);
+    for(i=0;i<100000;i++);
     gpio_set(SCREEN_E_PORT, SCREEN_E);
-    for(i=0;i<1000;i++);
+    for(i=0;i<100000;i++);
     t = SCREEN_DATA_IN & 0x80;     /* mask for the busy flag */
     gpio_clear(SCREEN_E_PORT, SCREEN_E);
   } while(t);
@@ -103,13 +103,16 @@ void ob_screen_instruction(unsigned char code, unsigned char val) {
   gpio_set_mode(SCREEN_DATA_PORT, GPIO_MODE_OUTPUT_50_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, 0xFF);
 
+  for(i=0;i<100000;i++);
+
   SCREEN_DATA_OUT = (SCREEN_DATA_OUT & 0xFF00) | code | val;
 
-  for(i=0;i<1000;i++);
+  for(i=0;i<100000;i++);
   gpio_set(SCREEN_E_PORT, SCREEN_E);
-  for(i=0;i<1000;i++);
+  for(i=0;i<100000;i++);
   gpio_clear(SCREEN_E_PORT, SCREEN_E);
 
+  for(i=0;i<100000;i++);
   /* set the data bus back to input only */
   gpio_set_mode(SCREEN_DATA_PORT, GPIO_MODE_INPUT,
                 GPIO_CNF_INPUT_FLOAT, 0xFF);
@@ -129,12 +132,12 @@ void ob_screen_data(unsigned char val) {
 
   /* wait for screen to be ready */
   do {
-    for(i=0;i<1000;i++);
+    for(i=0;i<100000;i++);
     gpio_set(SCREEN_E_PORT, SCREEN_E);
     for(i=0;i<10000000;i++);
     t = SCREEN_DATA_IN & 0x80;     /* mask for the busy flag */
-    gpio_clear(SCREEN_E_PORT, SCREEN_E);
     ob_printf("data is %x\n", SCREEN_DATA_IN);
+    gpio_clear(SCREEN_E_PORT, SCREEN_E);
   } while(t);
 
   ob_printf("okay, writing data\n");
@@ -148,13 +151,16 @@ void ob_screen_data(unsigned char val) {
   gpio_set_mode(SCREEN_DATA_PORT, GPIO_MODE_OUTPUT_50_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, 0xFF);
 
+  for(i=0;i<100000;i++);
+
   SCREEN_DATA_OUT = (SCREEN_DATA_OUT & 0xFF00) | val;
 
-  for(i=0;i<1000;i++);
+  for(i=0;i<100000;i++);
   gpio_set(SCREEN_E_PORT, SCREEN_E);
-  for(i=0;i<1000;i++);
+  for(i=0;i<100000;i++);
   gpio_clear(SCREEN_E_PORT, SCREEN_E);
 
+  for(i=0;i<100000;i++);
   /* set the data bus back to input only */
   gpio_set_mode(SCREEN_DATA_PORT, GPIO_MODE_INPUT,
                 GPIO_CNF_INPUT_FLOAT, 0xFF);
@@ -165,17 +171,21 @@ void ob_screen_data(unsigned char val) {
 void ob_screen_startup() {
   int i;
 
+  gpio_clear(SCREEN_RST_PORT, SCREEN_RST);
+
+  for(i=0;i<10000000;i++);
+
   gpio_clear(SCREEN_E_PORT, SCREEN_E);
-  gpio_set(SCREEN_CS1_PORT, SCREEN_CS1);
-  gpio_set(SCREEN_CS2_PORT, SCREEN_CS2);
+  gpio_clear(SCREEN_CS1_PORT, SCREEN_CS1);
+  gpio_clear(SCREEN_CS2_PORT, SCREEN_CS2);
   gpio_set(SCREEN_DI_PORT, SCREEN_DI);
   gpio_set(SCREEN_RW_PORT, SCREEN_RW);
   gpio_set(SCREEN_RST_PORT, SCREEN_RST);
 
-  for(i=0;i<10000;i++);
+  for(i=0;i<10000000;i++);
 
-  gpio_clear(SCREEN_CS1_PORT, SCREEN_CS1);
-  gpio_clear(SCREEN_CS2_PORT, SCREEN_CS2);
+  gpio_set(SCREEN_CS1_PORT, SCREEN_CS1);
+  //gpio_clear(SCREEN_CS2_PORT, SCREEN_CS2);
 
 
   ob_printf("setting screen on\n");
@@ -183,6 +193,13 @@ void ob_screen_startup() {
   ob_printf("setting screen col=0\n");
   ob_screen_instruction(SCREEN_COL, 0);
   ob_printf("setting screen row=0\n");
+  ob_screen_instruction(SCREEN_ROW, 0);
+
+  gpio_clear(SCREEN_CS1_PORT, SCREEN_CS1);
+  gpio_set(SCREEN_CS2_PORT, SCREEN_CS2);
+
+  ob_screen_instruction(SCREEN_ON, 0);
+  ob_screen_instruction(SCREEN_COL, 0);
   ob_screen_instruction(SCREEN_ROW, 0);
 
   ob_printf("clearing screen \n");
@@ -196,6 +213,12 @@ void ob_screen_cls() {
 }
 
 void ob_screen_test() {
+  int i;
+
+  gpio_set(SCREEN_CS1_PORT, SCREEN_CS1);
+  gpio_clear(SCREEN_CS2_PORT, SCREEN_CS2);
+
+  for(i=0;i<10000;i++);
 
   ob_printf("byte 0\n");
   ob_screen_data(0xAA);

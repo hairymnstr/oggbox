@@ -27,17 +27,18 @@ MEMORY
 }
 
 /* Include the common ld script from libopenstm32. */
+/*INCLUDE libopenstm32.ld*/
+
 EXTERN (vector_table)
 
-/* Define sections. */
 SECTIONS
 {
         . = ORIGIN(rom);
 
         .text : {
-                *(.vectors)     /* Vector table */
-                *(.text)        /* Program code */
-                *(.rodata)      /* Read-only data */
+                *(.vectors)    
+                *(.text)
+                *(.rodata)
                 . = ALIGN(4);
                 _etext = .;
         } >rom
@@ -46,13 +47,13 @@ SECTIONS
 
         .data : {
                 _data = .;
-                *(.data);        /* Read-write initialized data */
+                *(.data);
                 _edata = .;
         } >ram AT >rom
 
         .bss : {
                 _bss = .;
-                *(.bss)         /* Read-write zero initialized data */
+                *(.bss)
                 _ebss = .;
         } >ram AT >rom
   end = .;

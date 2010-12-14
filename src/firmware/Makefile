@@ -15,7 +15,8 @@ LDFLAGS		= -nostartfiles \
 		  -L$(TOOLCHAIN_DIR)/lib \
 		  -L/usr/local/cross-arm/arm-softfloat-elf/lib/thumb \
 		  -L/usr/local/cross-arm/lib/gcc/arm-softfloat-elf/4.4.3/thumb \
-		  -T$(LDSCRIPT)
+		  -T$(LDSCRIPT) \
+		  --defsym=_stack=0x20005000 
 
 OBJS		= $(BINARY).o \
 			ob_printf.o	\
