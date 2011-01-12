@@ -88,7 +88,7 @@ int main(void) {
   unsigned short l = 0;
   ob_screen_set_bl(16384);
 
-  ob_screen_set_contrast(65535);
+  ob_screen_set_contrast(32768);
 
   ob_screen_startup();
 
