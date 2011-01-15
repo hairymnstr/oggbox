@@ -45,7 +45,7 @@
 #define SCREEN_ROW        0xB8
 #define SCREEN_COL        0x40
 
-#define SCREEN_NORM       false
-#define SCREEN_INV        true
+#define SCREEN_NORM       0
+#define SCREEN_INV        1
 #endif
 

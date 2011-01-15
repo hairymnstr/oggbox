@@ -94,7 +94,9 @@ int main(void) {
 
   ob_printf("running screen test\n");
 
-  ob_screen_test();
+//  ob_screen_test();
+
+  ob_screen_print("Hello World");
 
   while(1) {;}
 /*  gpio_set(SCREEN_RST_PORT, SCREEN_RST);

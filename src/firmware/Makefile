@@ -23,7 +23,8 @@ OBJS		= $(BINARY).o \
 			ob_string_case.o	\
 			ob_itoa.o	\
 			ob_strlen.o	\
-			ob_screen.o
+			ob_screen.o	\
+			font.o
 
 OPENOCD_BASE	= /usr
 OPENOCD		= $(OPENOCD_BASE)/bin/openocd
