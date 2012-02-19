@@ -1,0 +1,45 @@
+EESchema-DOCLIB  Version 2.0  Fri 17 Feb 2012 14:38:50 GMT
+#
+$CMP C
+D Condensateur non polarise
+$ENDCMP
+#
+$CMP CONN_10X2
+D symbole general de connecteur
+K CONN
+$ENDCMP
+#
+$CMP CONN_4
+D Symbole general de connecteur
+K CONN
+$ENDCMP
+#
+$CMP CONN_6
+D ymbole general de connecteur
+K CONN
+$ENDCMP
+#
+$CMP CP
+D Condensateur polarise
+$ENDCMP
+#
+$CMP NPN
+F transistors/bipolar/*.*
+$ENDCMP
+#
+$CMP R
+D Resistance
+K R DEV
+$ENDCMP
+#
+$CMP SW_PUSH
+D Push Button
+K Switch
+$ENDCMP
+#
+$CMP SWITCH_INV
+D Switch inverseur
+K switch
+$ENDCMP
+#
+#End Doc Library

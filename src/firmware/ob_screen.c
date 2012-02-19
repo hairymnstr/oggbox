@@ -19,10 +19,11 @@ void ob_screen_setup() {
   gpio_set_mode(SCREEN_BL_PORT, GPIO_MODE_OUTPUT_50_MHZ,
                 GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, SCREEN_BL);
 
-   /* PWM output for contrast control */
+   /* CS output for contrast control */
   gpio_set_mode(SCREEN_CON_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-                GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, SCREEN_CON);
-  
+                GPIO_CNF_OUTPUT_PUSHPULL, SCREEN_CON);
+  gpio_set(SCREEN_CON_PORT, SCREEN_CON);  /* de-select this chip normally */
+
    /* Reset line */
   gpio_set_mode(SCREEN_RST_PORT, GPIO_MODE_OUTPUT_50_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, SCREEN_RST);
@@ -42,7 +43,7 @@ void ob_screen_setup() {
 
    /* leave the actual data bus floating for now, will set dir later */
 
-  /* === Setup PWM peripherals for brightness/contrast === */
+  /* === Setup PWM peripherals for brightness === */
    /* global settings for timer 1 */
   TIM1_CR1 = TIM_CR1_CKD_CK_INT | TIM_CR1_CMS_EDGE;
   TIM1_ARR = 65535;
@@ -53,11 +54,6 @@ void ob_screen_setup() {
   TIM1_CCMR1 |= TIM_CCMR1_OC2M_PWM1 | TIM_CCMR1_OC2PE;
   TIM1_CCER |= TIM_CCER_CC2E;
   TIM1_CCR2 = 0;
-
-   /* timer 1 channel 3 (screen contrast) */
-  TIM1_CCMR2 |= TIM_CCMR2_OC3M_PWM1 | TIM_CCMR2_OC3PE;
-  TIM1_CCER |= TIM_CCER_CC3E;
-  TIM1_CCR3 = 0;
 
   TIM1_CR1 |= TIM_CR1_ARPE;
   TIM1_CR1 |= TIM_CR1_CEN;
@@ -79,7 +75,68 @@ void ob_screen_set_bl(unsigned short level) {
 }
 
 void ob_screen_set_contrast(unsigned short level) {
-  TIM1_CCR3 = level;
+  /* TODO: put a mutex to avoid interfering with screen select?? */
+  int temp_cs=0;
+  register int i, j;
+  /* save chip selects */
+  if(gpio_get(SCREEN_CS1_PORT, SCREEN_CS1)) {
+    temp_cs |= 1;
+    gpio_clear(SCREEN_CS1_PORT, SCREEN_CS1);
+  }
+  if(gpio_get(SCREEN_CS2_PORT, SCREEN_CS2)) {
+    temp_cs |= 2;
+    gpio_clear(SCREEN_CS2_PORT, SCREEN_CS2);
+  }
+
+  gpio_set_mode(SCREEN_DATA_PORT, GPIO_MODE_OUTPUT_50_MHZ,
+                GPIO_CNF_OUTPUT_PUSHPULL, 0x3);
+  
+  level = (level >> 8) & 0xFF;
+
+  level = level | 0x1100;   /* write value to pot 0 */
+
+  gpio_clear(SCREEN_DATA_PORT, 0);    /* clock starts low */
+
+  if(level & 0x8000) {
+    gpio_set(SCREEN_DATA_PORT, 1);
+  } else {
+    gpio_clear(SCREEN_DATA_PORT, 1);
+  }
+
+  gpio_clear(SCREEN_CON_PORT, SCREEN_CON);  /* activate chip select */
+
+  for(i=14;i>=0;i--) {
+    for(j=0;j<5;j++);
+    gpio_set(SCREEN_DATA_PORT, 0);    /* clock high, latches data */
+    for(j=0;j<4;j++);
+    if(level & (1 << i)) {
+      gpio_set(SCREEN_DATA_PORT, 1);
+    } else {
+      gpio_clear(SCREEN_DATA_PORT, 1);
+    }
+    gpio_clear(SCREEN_DATA_PORT, 0);  /* clock low again */
+  }
+  /* need to put final clock pulse out, last data bit is already on the bus */
+  for(j=0;j<5;j++);
+  gpio_set(SCREEN_DATA_PORT, 0);
+  for(j=0;j<5;j++);
+  gpio_clear(SCREEN_DATA_PORT, 0);
+
+  /* clear the CS */
+  gpio_set(SCREEN_CON_PORT, SCREEN_CON);
+
+  /* reset the data bus to input */
+  gpio_set_mode(SCREEN_DATA_PORT, GPIO_MODE_INPUT,
+                GPIO_CNF_INPUT_FLOAT, 0x3);
+
+  /* replace chip select lines */
+  if(temp_cs & 1) {
+    gpio_set(SCREEN_CS1_PORT, SCREEN_CS1);
+  }
+  if(temp_cs & 2) {
+    gpio_set(SCREEN_CS2_PORT, SCREEN_CS2);
+  }
+    
   return;
 }
 
