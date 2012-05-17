@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2012-jan-04)-stable date = Thu 17 May 2012 15:15:41 BST
+Cmp-Mod V01 Created by CvPcb (2012-jan-04)-testing date = Thu 17 May 2012 20:55:43 BST
 
 BeginCmp
 TimeStamp = /4D360B65;
@@ -928,7 +928,7 @@ BeginCmp
 TimeStamp = /4D36058B;
 Reference = SW3;
 ValeurCmp = RESET;
-IdModule  = SW_EVQQ2P03W;
+IdModule  = SW_B3U-3000P-B;
 EndCmp
 
 BeginCmp
