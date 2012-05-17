@@ -1,0 +1,150 @@
+Cmp-Mod V01 Created by CvPcb (2012-jan-04)-stable date = Thu 01 Mar 2012 15:44:50 GMT
+
+BeginCmp
+TimeStamp = /4F4A576D;
+Reference = C1;
+ValeurCmp = 0.1u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A576C;
+Reference = C2;
+ValeurCmp = 0.1u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A576B;
+Reference = C3;
+ValeurCmp = 0.1u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A576A;
+Reference = C4;
+ValeurCmp = 0.1u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A5769;
+Reference = C5;
+ValeurCmp = 0.1u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F495FB9;
+Reference = C6;
+ValeurCmp = 2.2u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F495FED;
+Reference = C8;
+ValeurCmp = 2.2u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F495FE8;
+Reference = C10;
+ValeurCmp = 2.2u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F496056;
+Reference = C12;
+ValeurCmp = 2.2u;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A9F47;
+Reference = P1;
+ValeurCmp = CONN_9;
+IdModule  = HEADER_9;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A9F67;
+Reference = P2;
+ValeurCmp = CONN_9;
+IdModule  = HEADER_9;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4F9835;
+Reference = P3;
+ValeurCmp = CONN_1;
+IdModule  = M3_ROUND;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4F983A;
+Reference = P4;
+ValeurCmp = CONN_1;
+IdModule  = M3_ROUND;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A45B4;
+Reference = P5;
+ValeurCmp = CONN_4;
+IdModule  = BTHQ128064AVD1;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F495EA8;
+Reference = P6;
+ValeurCmp = CONN_28;
+IdModule  = AMP_FPC_28_05MM;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4F983D;
+Reference = P7;
+ValeurCmp = CONN_1;
+IdModule  = M3_ROUND;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4F9841;
+Reference = P8;
+ValeurCmp = CONN_1;
+IdModule  = M3_ROUND;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A4632;
+Reference = Q1;
+ValeurCmp = BSH121;
+IdModule  = SOT23;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A4A42;
+Reference = R2;
+ValeurCmp = 1M;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A463E;
+Reference = R4;
+ValeurCmp = 27;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /4F4A4639;
+Reference = R5;
+ValeurCmp = 27;
+IdModule  = SM0805;
+EndCmp
+
+EndListe
