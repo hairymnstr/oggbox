@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2012-jan-04)-testing date = Thu 17 May 2012 20:55:43 BST
+Cmp-Mod V01 Created by CvPcb (2012-jan-04)-stable date = Tue 22 May 2012 14:29:47 BST
 
 BeginCmp
 TimeStamp = /4D360B65;
@@ -407,9 +407,9 @@ IdModule  = SD_CARD9186158;
 EndCmp
 
 BeginCmp
-TimeStamp = /4F3E3FF1;
+TimeStamp = /4FBA5055;
 Reference = IC4;
-ValeurCmp = MCP1603T;
+ValeurCmp = MCP1802T-3002I-OT;
 IdModule  = SOT23-5;
 EndCmp
 
@@ -449,13 +449,6 @@ IdModule  = SM1206;
 EndCmp
 
 BeginCmp
-TimeStamp = /4F3E400D;
-Reference = L2;
-ValeurCmp = 4.7u;
-IdModule  = SM1210;
-EndCmp
-
-BeginCmp
 TimeStamp = /4D360F7D;
 Reference = P2;
 ValeurCmp = USB;
@@ -487,7 +480,7 @@ BeginCmp
 TimeStamp = /4F4248D7;
 Reference = P8;
 ValeurCmp = JTAG;
-IdModule  = HEADER_8;
+IdModule  = header_smd;
 EndCmp
 
 BeginCmp
@@ -932,42 +925,42 @@ IdModule  = SW_B3U-3000P-B;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE95;
+TimeStamp = /4FBA5BE4;
 Reference = SW4;
 ValeurCmp = MENU;
 IdModule  = SW_EVQQ2P03W;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE97;
+TimeStamp = /4FBA5A3D;
 Reference = SW5;
 ValeurCmp = SET;
 IdModule  = SW_EVQQ2P03W;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE99;
+TimeStamp = /4FBA5AEA;
 Reference = SW7;
 ValeurCmp = DOWN;
 IdModule  = SW_EVQQ2P03W;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE9C;
+TimeStamp = /4FBA5AEE;
 Reference = SW8;
 ValeurCmp = LEFT;
 IdModule  = SW_EVQQ2P03W;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE9D;
+TimeStamp = /4FBA5A5D;
 Reference = SW9;
 ValeurCmp = RIGHT;
 IdModule  = SW_EVQQ2P03W;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35ACF9;
+TimeStamp = /4FBA5BA2;
 Reference = SW10;
 ValeurCmp = UP;
 IdModule  = SW_EVQQ2P03W;
