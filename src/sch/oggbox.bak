@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Tue 22 May 2012 15:54:18 BST
+EESchema Schematic File Version 2  date Wed 23 May 2012 14:46:37 BST
 LIBS:74xx
 LIBS:adc-dac
 LIBS:analog_switches
@@ -38,7 +38,7 @@ $Descr A3 16535 11700
 encoding utf-8
 Sheet 1 1
 Title ""
-Date "22 may 2012"
+Date "23 may 2012"
 Rev ""
 Comp ""
 Comment1 ""
@@ -46,6 +46,7 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
+NoConn ~ 10750 6600
 Wire Wire Line
 	15250 3300 15250 3200
 Wire Wire Line
@@ -1203,8 +1204,6 @@ Connection ~ 10350 6300
 Wire Wire Line
 	11450 6300 11350 6300
 Wire Wire Line
-	10450 6600 10750 6600
-Wire Wire Line
 	10750 6800 10550 6800
 Wire Wire Line
 	11450 6600 11350 6600
@@ -1218,7 +1217,6 @@ Wire Wire Line
 Connection ~ 11450 6800
 Wire Wire Line
 	10450 6050 10450 7550
-Connection ~ 10450 6600
 Wire Wire Line
 	10350 6050 10350 7750
 Connection ~ 10550 6800
@@ -1270,7 +1268,7 @@ L JACK_LUMBERG_1503_13_VP3 P10
 U 1 1 4FBB9B13
 P 6550 6050
 F 0 "P10" H 6400 6350 60  0000 C CNN
-F 1 "JACK_LUMBERG_1503_13_VP3" H 6550 5800 60  0000 C CNN
+F 1 "PHONES" H 6550 5800 60  0000 C CNN
 	1    6550 6050
 	-1   0    0    -1  
 $EndComp
@@ -1279,7 +1277,7 @@ L JACK_LUMBERG_1503_13_VP3 P9
 U 1 1 4FBB9ABD
 P 1300 6450
 F 0 "P9" H 1150 6750 60  0000 C CNN
-F 1 "JACK_LUMBERG_1503_13_VP3" H 1300 6200 60  0000 C CNN
+F 1 "LINE" H 1300 6200 60  0000 C CNN
 	1    1300 6450
 	1    0    0    -1  
 $EndComp

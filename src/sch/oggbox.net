@@ -1,4 +1,4 @@
-# EESchema Netlist Version 1.1 created  Tue 22 May 2012 16:03:15 BST
+# EESchema Netlist Version 1.1 created  Wed 23 May 2012 14:46:42 BST
 (
  ( /4FBBA826 $noname  SW11 HOLD {Lib=SWITCH_INV_MECH}
   (    1 +3.0V )
@@ -6,14 +6,14 @@
   (    3 GND )
   (    4 GND )
  )
- ( /4FBB9B13 $noname  P10 JACK_LUMBERG_1503_13_VP3 {Lib=JACK_LUMBERG_1503_13_VP3}
+ ( /4FBB9B13 $noname  P10 PHONES {Lib=JACK_LUMBERG_1503_13_VP3}
   (    1 N-000115 )
   (    2 ? )
   (    3 N-000122 )
   (   4a N-000121 )
   (   4b N-000121 )
  )
- ( /4FBB9ABD $noname  P9 JACK_LUMBERG_1503_13_VP3 {Lib=JACK_LUMBERG_1503_13_VP3}
+ ( /4FBB9ABD $noname  P9 LINE {Lib=JACK_LUMBERG_1503_13_VP3}
   (    1 GNDA )
   (    2 ? )
   (    3 N-000013 )

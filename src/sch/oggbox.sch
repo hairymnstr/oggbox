@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Tue 22 May 2012 16:03:11 BST
+EESchema Schematic File Version 2  date Wed 23 May 2012 14:46:38 BST
 LIBS:74xx
 LIBS:adc-dac
 LIBS:analog_switches
@@ -38,7 +38,7 @@ $Descr A3 16535 11700
 encoding utf-8
 Sheet 1 1
 Title ""
-Date "22 may 2012"
+Date "23 may 2012"
 Rev ""
 Comp ""
 Comment1 ""
@@ -1268,7 +1268,7 @@ L JACK_LUMBERG_1503_13_VP3 P10
 U 1 1 4FBB9B13
 P 6550 6050
 F 0 "P10" H 6400 6350 60  0000 C CNN
-F 1 "JACK_LUMBERG_1503_13_VP3" H 6550 5800 60  0000 C CNN
+F 1 "PHONES" H 6550 5800 60  0000 C CNN
 	1    6550 6050
 	-1   0    0    -1  
 $EndComp
@@ -1277,7 +1277,7 @@ L JACK_LUMBERG_1503_13_VP3 P9
 U 1 1 4FBB9ABD
 P 1300 6450
 F 0 "P9" H 1150 6750 60  0000 C CNN
-F 1 "JACK_LUMBERG_1503_13_VP3" H 1300 6200 60  0000 C CNN
+F 1 "LINE" H 1300 6200 60  0000 C CNN
 	1    1300 6450
 	1    0    0    -1  
 $EndComp
