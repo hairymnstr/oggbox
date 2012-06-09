@@ -1,143 +1,60 @@
-ref	value
-B1	LIPO
-C1	18p
-C2	18p
-C3	1u
-C4	1u
-C5	0.01u
-C6	0.01u
-C7	0.1u
-C8	0.1u
-C9	0.1u
-C10	0.1u
-C11	0.1u
-C12	0.1u
-C13	0.1u
-C14	0.1u
-C15	0.1u
-C16	0.1u
-C17	0.1u
-C18	0.01u
-C19	4.7u
-C20	0.01u
-C21	0.01u
-C22	4.7u
-C23	47u
-C24	10p
-C25	10p
-C26	4.7u
-C27	0.1u
-C28	27p
-C29	27p
-C30	4.7u
-C32	0.1u
-C33	0.1u
-C34	0.1u
-C35	0.1u
-C36	0.1u
-C37	2.2u
-C39	2.2u
-C40	2.2u
-C41	2.2u
-C42	0.1u
-C43	1u
-C44	1u
-C45	0.1u
-C46	0.1u
-C47	4.7u
-C48	4.7u
-C49	0.1u
-C50	0.1u
-C51	0.1u
-C52	0.1u
-C53	0.1u
-C54	0.1u
-C55	0.1u
-D1	LED_RG
-IC1	VS1053
-IC2	MCP73831T
-IC3	SD_CARD
-IC4	MCP1802T-3002I-OT
-IC5	STM32F103RBT
-IC7	TPS76318
-IC8	TPS76328
-IC9	MCP102
-L1	470n
-P2	USB
-P5	CONN_4
-P6	CONN_28
-P7	FTDI
-P8	JTAG
-P9	LINE
-P10	PHONES
-Q1	BC817
-Q2	BC817
-Q3	BSH121
-Q4	BSH121
-R1	10k
-R2	120
-R3	1k
-R4	10k
-R5	10k
-R6	10k
-R7	10k
-R8	10k
-R9	10k
-R10	10k
-R11	120
-R12	1M
-R13	47k
-R14	10k
-R15	36k
-R16	1.5k
-R17	470
-R18	470
-R19	15k
-R20	22
-R21	22
-R22	22k
-R23	10k
-R24	10k
-R25	10k
-R26	10k
-R27	100k
-R28	100k
-R29	10
-R30	20
-R31	20
-R32	10k
-R33	10k
-R34	10k
-R35	3k3
-R36	12k
-R37	10k
-R38	10k
-R39	0
-R40	10k
-R41	10k
-R42	1M
-R43	10k
-R44	10k
-R46	10k
-R48	10k
-R49	10k
-R50	10k
-R51	10k
-R52	10k
-R53	27
-R54	27
-R56	1k
-R57	22k
-SW1	VOL_UP
-SW2	VOL_DN
-SW3	RESET
-SW4	MENU
-SW5	SET
-SW7	DOWN
-SW8	LEFT
-SW9	RIGHT
-SW10	UP
-SW11	HOLD
-X1	12.288MHz
-X2	32768Hz
-X3	8MHz
+              0	  1	         SM0805	"R39"
+          0.01u	  5	         SM0805	"C5, C6, C18, C20, C21"
+           0.1u	 27	         SM0805	"C7, C8, C9, C10, C11, C12, C13, C14, C15, C16, C17, C27, C32, C33, C34, C35, C36, C42, C45, C46, C49, C50, C51, C52, C53, C54, C55"
+           1.5k	  1	         SM0805	"R16"
+             10	  1	         SM0805	"R29"
+           100k	  2	         SM0805	"R27, R28"
+            10k	 28	         SM0805	"R1, R4, R5, R6, R7, R8, R9, R10, R14, R23, R24, R25, R26, R32, R33, R34, R37, R38, R40, R41, R43, R44, R46, R48, R49, R50, R51, R52"
+            10p	  2	         SM0805	"C24, C25"
+      12.288MHz	  1	         HC49SM	"X1"
+            120	  2	         SM0805	"R2, R11"
+            12k	  1	         SM0805	"R36"
+            15k	  1	         SM0805	"R19"
+            18p	  2	         SM0805	"C1, C2"
+             1k	  2	         SM0805	"R3, R56"
+             1M	  2	         SM0805	"R12, R42"
+             1u	  4	         SM0805	"C3, C4, C43, C44"
+           2.2u	  4	         SM0805	"C37, C39, C40, C41"
+             20	  2	         SM0805	"R30, R31"
+             22	  2	         SM0805	"R20, R21"
+            22k	  2	         SM0805	"R22, R57"
+             27	  2	         SM0805	"R53, R54"
+            27p	  2	         SM0805	"C28, C29"
+        32768Hz	  1	         CFS206	"X2"
+            36k	  1	         SM0805	"R15"
+            3k3	  1	         SM0805	"R35"
+           4.7u	  6	         SM0805	"C19, C22, C26, C30, C47, C48"	<10R
+            470	  2	         SM0805	"R17, R18"
+           470n	  1	         SM1206	"L1"
+            47k	  1	         SM0805	"R13"
+            47u	  1	         SM1206	"C23"
+           8MHz	  1	         HC49SM	"X3"
+          BC817	  2	          SOT23	"Q1, Q2"
+         BSH121	  2	          SOT23	"Q3, Q4"
+        CONN_28	  1	AMP_FPC_28_05MM	"P6"
+         CONN_4	  1	 BTHQ128064AVD1	"P5"
+           DOWN	  1	   SW_EVQQ2P03W	"SW7"
+           FTDI	  1	       HEADER_6	"P7"
+           HOLD	  1	      PCM12SMTR	"SW11"
+           JTAG	  1	     header_smd	"P8"
+         LED_RG	  1	          SOT23	"D1"
+           LEFT	  1	   SW_EVQQ2P03W	"SW8"
+           LINE	  1	JACK_LUMBERG_1503_13_VP3	"P9"
+           LIPO	  1	         JUMPER	"B1"
+         MCP102	  1	          SOT23	"IC9"
+MCP1802T-3002I-OT	  1	        SOT23-5	"IC4"
+      MCP73831T	  1	        SOT23-5	"IC2"
+           MENU	  1	   SW_EVQQ2P03W	"SW4"
+         PHONES	  1	JACK_LUMBERG_1503_13_VP3	"P10"
+          RESET	  1	 SW_B3U-3000P-B	"SW3"	9962859
+          RIGHT	  1	   SW_EVQQ2P03W	"SW9"
+        SD_CARD	  1	 SD_CARD9186158	"IC3"
+            SET	  1	   SW_EVQQ2P03W	"SW5"
+   STM32F103RBT	  1	         LQFP64	"IC5"
+       TPS76318	  1	        SOT23-5	"IC7"
+       TPS76328	  1	        SOT23-5	"IC8"
+             UP	  1	   SW_EVQQ2P03W	"SW10"
+            USB	  1	MICRO_USB_1568026	"P2"
+         VOL_DN	  1	 SW_B3U-3000P-B	"SW2"	9962859
+         VOL_UP	  1	 SW_B3U-3000P-B	"SW1"	9962859
+         VS1053	  1	         LQFP48	"IC1"
