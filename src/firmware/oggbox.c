@@ -23,6 +23,8 @@
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
 
+#include "oggbox.h"
+
 void gpio_setup(void)
 {
 	/* Enable GPIOC clock. */
@@ -36,8 +38,8 @@ void gpio_setup(void)
 	// GPIOC_CRH = (GPIO_CNF_OUTPUT_PUSHPULL << (((12 - 8) * 4) + 2));
 	// GPIOC_CRH |= (GPIO_MODE_OUTPUT_2_MHZ << ((12 - 8) * 4));
 	/* Using API functions: */
-	gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ,
-		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO1);
+	gpio_set_mode(GREEN_LED_PORT, GPIO_MODE_OUTPUT_2_MHZ,
+		      GPIO_CNF_OUTPUT_PUSHPULL, RED_LED_PIN | GREEN_LED_PIN);
 }
 
 int main(void)
@@ -45,6 +47,8 @@ int main(void)
 	int i;
 
 	gpio_setup();
+        
+        gpio_set(RED_LED_PORT, RED_LED_PIN);
 
 	/* Blink the LED (PC12) on the board. */
 	while (1) {
@@ -65,7 +69,7 @@ int main(void)
 		// 	__asm__("nop");
 
 		/* Using API function gpio_toggle(): */
-		gpio_toggle(GPIOB, GPIO1);	/* LED on/off */
+		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN | RED_LED_PIN);	/* LED on/off */
 		for (i = 0; i < 800000; i++)	/* Wait a bit. */
 			__asm__("nop");
 	}

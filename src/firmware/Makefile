@@ -85,5 +85,8 @@ clean:
 	$(Q)rm -f *.srec
 	$(Q)rm -f *.list
 
+# always uses the same serial adapter no matter what order it was plugged in
+install: $(BINARY).hex
+	stm32flash -w $(BINARY).hex -v -g 0x0 /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A3000I6Y-if00-port0
 .PHONY: images clean
 
