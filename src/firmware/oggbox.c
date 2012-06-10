@@ -24,6 +24,7 @@
 #include <libopencm3/stm32/f1/gpio.h>
 
 #include "oggbox.h"
+#include "lcd.h"
 
 void gpio_setup(void)
 {
@@ -47,6 +48,9 @@ int main(void)
 	int i;
 
 	gpio_setup();
+        lcdInit();
+        
+        lcdBacklight(32768);
         
         gpio_set(RED_LED_PORT, RED_LED_PIN);
 
