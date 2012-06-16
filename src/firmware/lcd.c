@@ -24,6 +24,8 @@
 #include "oggbox.h"
 #include "lcd.h"
 
+extern const char *font[];
+
 void lcdCommand(unsigned char cmd) {
   int i;
   while(lcdStatus() & LCD_BUSY) {__asm__("nop\n\t");}
@@ -137,17 +139,55 @@ void lcdInit() {
   
   for(i=0;i<10000;i++) {__asm__("nop\n\t");}
   
-  lcdCommand(0xA3);
-  lcdCommand(0xA1);
-  lcdCommand(0xC0);
-  lcdCommand(0x25);
-  lcdCommand(0x81);
-  lcdCommand(0x60);
-  lcdCommand(0x2f);
-  lcdCommand(0xAF);
+  lcdCommand(LCD_BIAS_SEVENTH);
+  lcdCommand(LCD_DIRECTION_FWD);
+  lcdCommand(LCD_COMMON_FWD);
+  lcdCommand(LCD_VREG_SET);
+  lcdCommand(LCD_CONTRAST_HI);
+  lcdCommand(LCD_CONTRAST_LO(32));
+  lcdCommand(LCD_POWER_SETUP);
+  lcdCommand(LCD_DISPLAY_ON);
   
 }
 
 void lcdBacklight(unsigned short level) {
   TIM2_CCR3 = level;
 }
+
+void lcdContrast(unsigned char contrast) {
+  contrast = contrast & 0x3F;
+  lcdCommand(LCD_CONTRAST_HI);
+  lcdCommand(LCD_CONTRAST_LO(contrast));
+}
+
+void lcdClear() {
+  int i, j;
+  
+  for(i=0;i<8;i++) {
+    lcdCommand(LCD_PAGE_SET(i));
+    lcdCommand(LCD_COLUMN_SET_HI(4));
+    lcdCommand(LCD_COLUMN_SET_LO(4));
+    for(j=0;j<128;j++) {
+      lcdData(0x00);
+    }
+  }
+  lcdCommand(LCD_PAGE_SET(0));
+  lcdCommand(LCD_COLUMN_SET_HI(4));
+  lcdCommand(LCD_COLUMN_SET_LO(4));
+}
+
+void lcdPrintPortrait(char *msg, char line) {
+  int i, j;
+  for(i=0;i<8;i++) {
+    if(msg[i] == 0) {
+      break;
+    }
+    lcdCommand(LCD_PAGE_SET(i));
+    lcdCommand(LCD_COLUMN_SET_HI(4 + line * 8));
+    lcdCommand(LCD_COLUMN_SET_LO(4 + line * 8));
+    for(j=0;j<8;j++) {
+      lcdData(font[msg[i]][j]);
+    }
+  }
+}
+  

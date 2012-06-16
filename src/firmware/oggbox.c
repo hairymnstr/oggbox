@@ -50,7 +50,12 @@ int main(void)
 	gpio_setup();
         lcdInit();
         
+        lcdClear();
+        
         lcdBacklight(32768);
+        
+        lcdPrintPortrait(" OggBox", 2);
+        lcdPrintPortrait("  RevA", 3);
         
         gpio_set(RED_LED_PORT, RED_LED_PIN);
 
