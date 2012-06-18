@@ -33,6 +33,7 @@ void gpio_setup(void)
 	// RCC_APB2ENR |= RCC_APB2ENR_IOPCEN;
 	/* Using API functions: */
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPBEN);
+        rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPDEN);
 
 	/* Set GPIO12 (in GPIO port C) to 'output push-pull'. */
 	/* Manually: */
@@ -78,9 +79,13 @@ int main(void)
 		// 	__asm__("nop");
 
 		/* Using API function gpio_toggle(): */
-		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN | RED_LED_PIN);	/* LED on/off */
-		for (i = 0; i < 800000; i++)	/* Wait a bit. */
-			__asm__("nop");
+		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN);	/* LED on/off */
+		for (i = 0; i < 400000; i++)    {	/* Wait a bit. */
+			if(gpio_port_read(GPIOD) & 4)
+                          gpio_set(RED_LED_PORT, RED_LED_PIN);
+                        else
+                          gpio_clear(RED_LED_PORT, RED_LED_PIN);
+                }
 	}
 
 	return 0;
