@@ -45,5 +45,6 @@ void lcdInit();
 void lcdClear();
 void lcdBacklight(unsigned short);
 void lcdPrintPortrait(char *, char);
-
+void lcdBlit(unsigned char *img, unsigned char rows, unsigned char cols, unsigned char x, unsigned char y);
+void lcdBlitPortrait(unsigned char *img, unsigned char rows, unsigned char cols, unsigned char x, unsigned char y);
 #endif /* ifndef LCD_H */

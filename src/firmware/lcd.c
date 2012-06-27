@@ -21,6 +21,8 @@
 #include <libopencm3/stm32/f1/gpio.h>
 #include <libopencm3/stm32/timer.h>
 
+#include <stdint.h>
+
 #include "oggbox.h"
 #include "lcd.h"
 
@@ -190,4 +192,18 @@ void lcdPrintPortrait(char *msg, char line) {
     }
   }
 }
-  
+
+void lcdBlit(uint8_t *img, unsigned char rows, unsigned char cols, unsigned char x, unsigned char y) {
+  lcdBlitPortrait(img, rows, cols, x, y);
+}
+
+void lcdBlitPortrait(uint8_t *img, unsigned char rows, unsigned char cols,
+                     unsigned char x, unsigned char y) {
+  int j;
+  lcdCommand(LCD_PAGE_SET(x/8));
+  lcdCommand(LCD_COLUMN_SET_HI(4 + y));
+  lcdCommand(LCD_COLUMN_SET_LO(4 + y));
+  for(j=0;j<8;j++) {
+    lcdData(img[j]);
+  }
+}

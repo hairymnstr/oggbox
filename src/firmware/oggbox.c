@@ -23,16 +23,27 @@
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
 
+#include <stdio.h>
+
+#include "dirent.h"
+
 #include "oggbox.h"
 #include "lcd.h"
+#include "ui.h"
+#include "sdfat.h"
+#include "nd_usart.h"
+
+extern void _etext, _data, _edata, _bss, _ebss, _stack;
 
 void gpio_setup(void)
 {
+        rcc_clock_setup_in_hse_8mhz_out_72mhz();
 	/* Enable GPIOC clock. */
 	/* Manually: */
 	// RCC_APB2ENR |= RCC_APB2ENR_IOPCEN;
 	/* Using API functions: */
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPBEN);
+        rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
         rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPDEN);
 
 	/* Set GPIO12 (in GPIO port C) to 'output push-pull'. */
@@ -47,16 +58,36 @@ void gpio_setup(void)
 int main(void)
 {
 	int i;
+//         DIR *dr;
+//         struct dirent *de;
 
+//         __builtin_memcpy(&_data, &_etext, &_edata - &_data);
+//         __builtin_memset(&_bss, 0, &_ebss - &_bss);
+
+        
+        usart_clock_setup();
 	gpio_setup();
+        usart_setup();
         lcdInit();
         
         lcdClear();
         
         lcdBacklight(32768);
         
+//         sdfat_init();
+//         sdfat_mount();
+        
+        usart_puts("Hello World\r\n");
+//         iprintf("Hello World\r\n");
+        
+        uiShowSD(gpio_port_read(GPIOD) & 4);    // SD absent
+        
         lcdPrintPortrait(" OggBox", 2);
         lcdPrintPortrait("  RevA", 3);
+//     dr = opendir("/");
+//     de = readdir(dr);
+    
+//         lcdPrintPortrait(de->d_name, 5);
         
         gpio_set(RED_LED_PORT, RED_LED_PIN);
 
@@ -80,11 +111,14 @@ int main(void)
 
 		/* Using API function gpio_toggle(): */
 		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN);	/* LED on/off */
-		for (i = 0; i < 400000; i++)    {	/* Wait a bit. */
+		for (i = 0; i < 10000; i++)    {	/* Wait a bit. */
 			if(gpio_port_read(GPIOD) & 4)
                           gpio_set(RED_LED_PORT, RED_LED_PIN);
                         else
                           gpio_clear(RED_LED_PORT, RED_LED_PIN);
+                        
+                        uiShowSD(gpio_port_read(GPIOC) & (1 << 13));
+                        uiShowLocked(gpio_port_read(GPIOD) & 4);
                 }
 	}
 
