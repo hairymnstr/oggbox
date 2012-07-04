@@ -78,7 +78,8 @@ int main(void)
 //         sdfat_mount();
         
         usart_puts("Hello World\r\n");
-//         iprintf("Hello World\r\n");
+        _write_r(NULL, STDOUT_FILENO, "Hello Worl2\r\n", 13);
+        fwrite("Hello Worl3\r\n", 1, 13, stdout);
         
         uiShowSD(gpio_port_read(GPIOD) & 4);    // SD absent
         
