@@ -32,8 +32,9 @@
 #include "ui.h"
 #include "sdfat.h"
 #include "nd_usart.h"
+#include "sd.h"
 
-extern void _etext, _data, _edata, _bss, _ebss, _stack;
+extern SDCard card;
 
 void gpio_setup(void)
 {
@@ -58,12 +59,8 @@ void gpio_setup(void)
 int main(void)
 {
 	int i;
-//         DIR *dr;
-//         struct dirent *de;
-
-//         __builtin_memcpy(&_data, &_etext, &_edata - &_data);
-//         __builtin_memset(&_bss, 0, &_ebss - &_bss);
-
+        DIR *dr;
+        struct dirent *de;
         
         usart_clock_setup();
 	gpio_setup();
@@ -74,21 +71,23 @@ int main(void)
         
         lcdBacklight(32768);
         
-//         sdfat_init();
-//         sdfat_mount();
-        
-        usart_puts("Hello World\r\n");
-        _write_r(NULL, STDOUT_FILENO, "Hello Worl2\r\n", 13);
-        fwrite("Hello Worl3\r\n", 1, 13, stdout);
+        sdfat_init();
+        iprintf("Mount SD: %d\r\n", sdfat_mount());
+        iprintf("SD Error: %d\r\n", card.error);
+//         usart_puts("Hello World\r\n");
+//         _write_r(NULL, STDOUT_FILENO, "Hello Worl2\r\n", 13);
+//         fwrite("Hello Worl3\r\n", 1, 13, stdout);
         
         uiShowSD(gpio_port_read(GPIOD) & 4);    // SD absent
         
         lcdPrintPortrait(" OggBox", 2);
         lcdPrintPortrait("  RevA", 3);
-//     dr = opendir("/");
-//     de = readdir(dr);
+    dr = opendir("/");
+    iprintf("dr = %p\r\n", dr);
+    de = readdir(dr);
+    iprintf("de = %p\r\n", de);
     
-//         lcdPrintPortrait(de->d_name, 5);
+        lcdPrintPortrait(de->d_name, 5);
         
         gpio_set(RED_LED_PORT, RED_LED_PIN);
 
@@ -112,13 +111,13 @@ int main(void)
 
 		/* Using API function gpio_toggle(): */
 		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN);	/* LED on/off */
-		for (i = 0; i < 10000; i++)    {	/* Wait a bit. */
+		for (i = 0; i < 1000; i++)    {	/* Wait a bit. */
 			if(gpio_port_read(GPIOD) & 4)
                           gpio_set(RED_LED_PORT, RED_LED_PIN);
                         else
                           gpio_clear(RED_LED_PORT, RED_LED_PIN);
                         
-                        uiShowSD(gpio_port_read(GPIOC) & (1 << 13));
+                        uiShowSD(!gpio_get(GPIOC, GPIO13));
                         uiShowLocked(gpio_port_read(GPIOD) & 4);
                 }
 	}

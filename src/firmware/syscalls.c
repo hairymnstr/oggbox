@@ -118,7 +118,7 @@ int _close(int fd) {
   return(0);
 }
 
-int _write_r(struct _reent *ptr, int fd, const void *data, unsigned int count) {
+int _write(int fd, const void *data, unsigned int count) {
   if (fd == STDOUT_FILENO)  {
     count = write_std_out(data, count);
   } else if (fd == STDERR_FILENO) {

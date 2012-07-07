@@ -8,26 +8,26 @@
 
 extern FileS file_num[];
 
-DIR ret;
+// DIR ret;
 
 DIR *opendir(const char *path) {
   struct stat buffer;
   int fildes;
-//   DIR *ret;
+  DIR *ret;
 
-//   ret = (DIR *)malloc(sizeof(DIR));
+  ret = (DIR *)malloc(sizeof(DIR));
 
-//   fildes = open(path, O_RDWR);
-//   iprintf("opendir descriptor %d\n", fildes);
-//   if(fstat(fildes, &buffer)) {
-//     return NULL;
-//   }
-//   if(!(buffer.st_mode & S_IFDIR)) {
-//     return NULL;
-//   }
-//   ret.dd_fd = fildes;
+  fildes = open(path, O_RDWR);
+  iprintf("opendir descriptor %d\n", fildes);
+  if(fstat(fildes, &buffer)) {
+    return NULL;
+  }
+  if(!(buffer.st_mode & S_IFDIR)) {
+    return NULL;
+  }
+  ret->dd_fd = fildes;
 
-  return &ret;
+  return ret;
 }
 
 struct dirent *readdir(DIR *dirin) {

@@ -175,7 +175,7 @@ uint8_t sd_card_reset() {
   uint16_t c;
 
 #ifdef SD_CP
-  if(!gpio_get(SD_CP_PORT, SD_CP)) {
+  if(gpio_get(SD_CP_PORT, SD_CP)) {
     card.error = SD_ERR_NOT_PRESENT;
     return -1;
   }

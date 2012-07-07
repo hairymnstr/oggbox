@@ -3,7 +3,7 @@
 #include "icons.h"
 
 void uiShowSD(int16_t present) {
-  if(!present) {
+  if(present) {
     lcdBlit(sdpresentimg, 8, 8, 0, 0);
   } else {
     lcdBlit(sdabsentimg, 8, 8, 0, 0);
