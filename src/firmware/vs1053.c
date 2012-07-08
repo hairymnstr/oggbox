@@ -18,31 +18,35 @@ extern MediaFileS media_file;
  *                 Makes sure last bit is clocked out
  *                 before returning so CS can be released.
  **/
+// uint8_t spi_msg(uint8_t dat) {
+//   /* wait for any previous transmission to be done */
+//   while((SPI_SR(CODEC_SPI) & SPI_SR_BSY)) {;}
+// 
+//   /* make sure the RX data flag is clear */
+//   if(SPI_SR(CODEC_SPI) & SPI_SR_RXNE) {
+//     spi_read(CODEC_SPI);
+//   }
+// 
+//   /* write all 1s out, generates the necessary clocks */
+//   spi_write(CODEC_SPI, dat);
+// 
+//   /* wait until a whole byte has been clocked back in */
+//   while((SPI_SR(CODEC_SPI) & SPI_SR_RXNE) == 0) {;}
+// 
+//   /* return the received byte */
+//   return spi_read(CODEC_SPI);
+// }
+
 uint8_t spi_msg(uint8_t dat) {
-  /* wait for any previous transmission to be done */
-  while((SPI_SR(CODEC_SPI) & SPI_SR_BSY)) {;}
-
-  /* make sure the RX data flag is clear */
-  if(SPI_SR(CODEC_SPI) & SPI_SR_RXNE) {
-    spi_read(CODEC_SPI);
-  }
-
-  /* write all 1s out, generates the necessary clocks */
-  spi_write(CODEC_SPI, dat);
-
-  /* wait until a whole byte has been clocked back in */
-  while((SPI_SR(CODEC_SPI) & SPI_SR_RXNE) == 0) {;}
-
-  /* return the received byte */
-  return spi_read(CODEC_SPI);
+  return spi_xfer(CODEC_SPI, dat);
 }
 
 void init_codec() {
   /* enable clock for Aux power and power up the regulators */
   rcc_peripheral_enable_clock(&CODEC_PWR_APB, CODEC_RCC_PWR);
-  gpio_set_mode(CODEC_PWR_PORT, GPIO_MODE_OUTPUT_50MHz,
+  gpio_set_mode(CODEC_PWR_PORT, GPIO_MODE_OUTPUT_50_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, CODEC_PWR);
-  gpio_set(CODEC_PWR_PORT, GPIO_PWR);
+  gpio_set(CODEC_PWR_PORT, CODEC_PWR);
   
   /* enable SPI1 clock */
   rcc_peripheral_enable_clock(&CODEC_SPI_APB, CODEC_RCC_SPI);
@@ -50,6 +54,8 @@ void init_codec() {
   rcc_peripheral_enable_clock(&CODEC_IOS_APB, CODEC_RCC_IOS);
   /* enable clock for the RST/DREQ lines */
   rcc_peripheral_enable_clock(&CODEC_IOI_APB, CODEC_RCC_IOI);
+  
+  rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
 
   /* set the pin modes for the SPI pins */
   gpio_set_mode(CODEC_PORT, GPIO_MODE_OUTPUT_50_MHZ,
@@ -165,15 +171,17 @@ void demo_codec() {
 }
 
 void play_file(char *filename) {
-  int i, j=0, l, fn;
+  int i, j=0,fn;
   FILE *fr;
+//   int s = 1;
+  /*
 
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
   vs1053_SCI_write(0x00, 0xc00);
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
   vs1053_SCI_write(SCI_VOL, 0x3030);
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
-  iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
+  iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));*/
 //  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
 //  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
 
@@ -182,21 +190,49 @@ void play_file(char *filename) {
 //  vs1053_SCI_write(SCI_CLOCKF, 0xA000);
 //  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
 
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  vs1053_SCI_write(0x00, 0xc00);
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  vs1053_SCI_write(SCI_VOL, 0x3030);
+  
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  iprintf("SCI_STATUS = 0x%04X\r\n", vs1053_SCI_read(SCI_STATUS));
+  
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  iprintf("initial state 0x%04X\r\n", vs1053_SCI_read(SCI_CLOCKF));
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_256);
+  vs1053_SCI_write(SCI_CLOCKF, 0xF800);
+  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_16);
+  
+  for(i=0;i<1000;i++) {__asm__("nop\n\t");}
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  iprintf("after setup 0x%04X\r\n", vs1053_SCI_read(SCI_CLOCKF));
+  
   fr = fopen(filename, "r");
-  fn = 2;//5;//fileno(fr);
+  fn = fileno(fr);
+//   iprintf("File No. %d\r\n", fn - FIRST_DISC_FILENO);
+  
+//   iprintf("==================================\r\n");
+//   int k;
+//   for(k=0;k<sizeof(FileS);k++) {
+//     iprintf("%02X ", ((char *)(&file_num[fn- FIRST_DISC_FILENO]))[k]);
+//     if((k+1) % 8 == 0) iprintf("\r\n");
+//   }
   
 //  l = read(fn, dat, 512);
   while(1) {
     gpio_set(CODEC_PORT, CODEC_CS);
     for(j=0;j<16;j++) {
-      while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+      while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
       for(i=0;i<32;i+=2) {
-        spi_msg(file_num[fn].buffer[32*j+i]);
-        spi_msg(file_num[fn].buffer[32*j+i+1]);
+        spi_msg(file_num[fn-FIRST_DISC_FILENO].buffer[32*j+i]);
+        spi_msg(file_num[fn-FIRST_DISC_FILENO].buffer[32*j+i+1]);
       }
     }
     gpio_clear(CODEC_PORT, CODEC_CS);
-    sdfat_next_sector(fn);
+//     iprintf("getting sector %d\r\n", s++);
+    sdfat_next_sector(fn-FIRST_DISC_FILENO);
   }
 
 }
@@ -204,17 +240,17 @@ void play_file(char *filename) {
 void play_file_fast(char *filename) {
   int i, j=0, k; //l, fn;
   uint16_t endFillByte;
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   vs1053_SCI_write(0x00, 0xc00);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
-  vs1053_SCI_write(SCI_VOL, 0x3030);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  vs1053_SCI_write(SCI_VOL, 0x1010);
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_256);
   vs1053_SCI_write(SCI_CLOCKF, 0xF800);
   spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_16);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   iprintf("after setup 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
 
 
@@ -228,7 +264,7 @@ void play_file_fast(char *filename) {
     for(k=0;k<4;k++) {
       gpio_set(CODEC_PORT, CODEC_CS);
       for(j=0;j<16;j++) {
-        while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+        while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
         for(i=0;i<32;i++) {
           spi_msg(media_file.buffer[media_file.active_buffer][512 * k + 32*j + i]);
         }
@@ -241,7 +277,7 @@ void play_file_fast(char *filename) {
   for(k=0;k<4;k++) {
     gpio_set(CODEC_PORT, CODEC_CS);
     for(j=0;j<16;j++) {
-      while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+      while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
       for(i=0;i<32;i++) {
         if((512 * k + 32 * j + i) > media_file.file_end) {
           i = 32;
@@ -258,12 +294,12 @@ void play_file_fast(char *filename) {
   gpio_clear(CODEC_PORT, CODEC_CS);
   /* fetch the value of endFillByte */
   vs1053_SCI_write(SCI_WRAMADDR, PARAM_END_FILL_BYTE);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   endFillByte = vs1053_SCI_read(SCI_WRAM) & 0xFF;
 
   gpio_set(CODEC_PORT, CODEC_CS);
   for(i=0;i<65;i++) {
-    while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+    while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
     for(j=0;j<32;j++) {
       spi_msg(endFillByte);
     }
@@ -275,7 +311,7 @@ void play_file_fast(char *filename) {
   gpio_set(CODEC_PORT, CODEC_CS);
   j = 0;
   while(j < 2048) {
-    while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
+    while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
     for(i=0;i<32;i++) {
       spi_msg(endFillByte);
     }

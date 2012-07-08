@@ -25,7 +25,7 @@ int dma_block_no;
 int dma_total_blocks;
 unsigned int *dma_report_done;
 char *garbage = "\xFF";
-int dma_state;
+volatile int dma_state;
 
 /**
  *  sd_transfer_byte - internal low level transfer byte function
@@ -75,7 +75,7 @@ void sd_write_byte(uint16_t dat) {
  *  sd_command - internal function to send a properly formatted command to
  *               to the SD card.
  */
-uint16_t sd_command(u8 code, u32 data, u8 chksm) {
+uint16_t sd_command(uint8_t code, uint32_t data, uint8_t chksm) {
   uint16_t c;
 
   if(code & 0x80) {
@@ -508,7 +508,7 @@ void start_dma_transfer() {
 void dma1_channel4_isr() {
   uint8_t c;
 
-  gpio_toggle(GPIOC, GPIO12);
+//   gpio_toggle(GPIOC, GPIO12);
 
   DMA_IFCR(DMA1) |= DMA_IFCR_CTCIF4 | DMA_IFCR_CGIF4 | DMA_IFCR_CHTIF4;
   DMA_IFCR(DMA1) |= DMA_IFCR_CTCIF5 | DMA_IFCR_CGIF5 | DMA_IFCR_CHTIF5;
@@ -543,7 +543,9 @@ uint16_t sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, uns
   uint16_t c;
 
   /* block until previous transfer finishes if there's one going on */
-  while(dma_state) {;}
+//   iprintf("sd_read_multiblock_entry\r\n");
+  while(dma_state) {__asm__("nop\n\t");}
+//   iprintf("DMA wait done\r\n");
 
   dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
   dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_LOW);
@@ -595,6 +597,7 @@ uint16_t sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, uns
   //for(j=0;j<num_blocks;j++) {     /* loop over number of blocks */
   //  dma_block_no = j;
   start_dma_transfer();
+//   iprintf("done multiblock\r\n");
 //  while(dma_state) {
 //    iprintf("DMA block %d\n", dma_block_no);
 //    while(!(DMA_ISR(DMA1) & DMA_ISR_TCIF4)) {;}

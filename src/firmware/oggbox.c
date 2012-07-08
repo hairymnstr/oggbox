@@ -83,18 +83,21 @@ int main(void)
         
         lcdPrintPortrait(" OggBox", 2);
         lcdPrintPortrait("  RevA", 3);
-    dr = opendir("/");
-    iprintf("dr = %p\r\n", dr);
-    de = readdir(dr);
-    iprintf("de = %p\r\n", de);
+//     dr = opendir("/");
+//     iprintf("dr = %p\r\n", dr);
+//     de = readdir(dr);
+//     iprintf("de = %p\r\n", de);
     
-        lcdPrintPortrait(de->d_name, 5);
+//         lcdPrintPortrait(de->d_name, 5);
         
         gpio_set(RED_LED_PORT, RED_LED_PIN);
         
-        codec_init();
-        codec_demo();
-
+        init_codec();
+//         demo_codec();
+        play_file_fast("/02-THE~1.OGG");
+  iprintf("First file finished. Playing another...\n");
+play_file("/magicc~1.ogg");
+  
 	/* Blink the LED (PC12) on the board. */
 	while (1) {
 		/* Manually: */

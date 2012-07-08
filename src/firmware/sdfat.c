@@ -355,10 +355,10 @@ int sdfat_open(const char *name, int mode) {
   int i;
   int8_t fd;
 
-  iprintf("%s\n", name);
+  iprintf("%s\r\n", name);
   fd = sdfat_get_next_file();
-  iprintf("fd = %d\n", fd);
-  iprintf("mode = %X\n", mode);
+  iprintf("fd = %d\r\n", fd);
+  iprintf("mode = %X\r\n", mode);
   if(fd < 0) {
     return -EMFILE;   /* too many open files */
   }
@@ -378,10 +378,10 @@ int sdfat_open(const char *name, int mode) {
     if(mode == O_RDONLY) {
       /* read existing file */
       file_num[fd].file_sector = 0;
-      iprintf("returning %d\n", fd);
+      iprintf("returning %d\r\n", fd);
       return fd;
     } else {
-      iprintf("not just read only\n");
+      iprintf("not just read only\r\n");
       if(mode & O_APPEND) {
         /* need to seek to the end */
         /* TODO */
@@ -397,6 +397,7 @@ int sdfat_open(const char *name, int mode) {
 }
 
 int sdfat_close(int fn) {
+  iprintf("sdfat_close %d\r\n", fn);
   if(!(available_files & (1 << fn))) {
     return -1;    /* tried to close a file that's not open */
   }
@@ -412,14 +413,14 @@ int sdfat_lookup_path(int fd, const char *path) {
   int i;
   int path_pointer = 0;
   direntS *de;
-  iprintf("sdfat_lookup_path\n");
+  iprintf("sdfat_lookup_path\r\n");
 
   if(path[0] != '/') {
     return -2;                                /* bad path, we have no cwd */
   }
 
   /* select root directory */
-  iprintf("selecting card root dir on cluster %d\n", card.root_cluster);
+  iprintf("selecting card root dir on cluster %d\r\n", card.root_cluster);
   sdfat_select_cluster(fd, card.root_cluster);
 
   path_pointer++;
@@ -445,15 +446,15 @@ int sdfat_lookup_path(int fd, const char *path) {
     if(make_dos_name(dosname, path, &path_pointer)) {
       return -1;  /* invalid path name */
     }
-    iprintf("%s\n", dosname);
+    iprintf("%s\r\n", dosname);
     while(1) {
-      iprintf("looping\n");
+      iprintf("looping\r\n");
       for(i=0;i<16;i++) {
         if(strncmp(dosname, (char *)(file_num[fd].buffer + (i * 32)), 11) == 0) {
           break;
         }
         file_num[fd].buffer[i * 32 + 11] = 0;
-        iprintf("%s %d\n", (char *)(file_num[fd].buffer + (i * 32)), i);
+        iprintf("%s %d\r\n", (char *)(file_num[fd].buffer + (i * 32)), i);
       }
       if(i == 16) {
         if(sdfat_next_sector(fd) != 0) {
@@ -463,9 +464,9 @@ int sdfat_lookup_path(int fd, const char *path) {
         break;
       }
     }
-    iprintf("got here %d\n", i);
+    iprintf("got here %d\r\n", i);
     de = (direntS *)(file_num[fd].buffer + (i * 32));
-    iprintf("%s\n", de->filename);
+    iprintf("%s\r\n", de->filename);
     isdir = de->attributes & 0x10;
     /* if dir, and there are more path elements, select */
     if(isdir && (doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer + 1]) != 0)) {
@@ -510,7 +511,7 @@ int sdfat_lookup_path(int fd, const char *path) {
     for(n=0;n<8;n++) {
       iprintf("%02X ", *(file_num[fd].filename + (m * 4 + n)));
     }
-    iprintf("\n");
+    iprintf("\r\n");
   }
 
   return 0;
@@ -601,7 +602,7 @@ int sdfat_get_next_dirent(int fd, struct dirent *out_de) {
 
 char *sdfat_open_media(char *filename) {
   int fn;
-  iprintf("sdfat_open_media - entry\n");
+  iprintf("sdfat_open_media - entry\r\n");
   fn = sdfat_open(filename, O_RDONLY);
   media_file.cluster = file_num[fn].full_first_cluster;
   media_file.file_len = file_num[fn].size;
@@ -620,8 +621,8 @@ char *sdfat_open_media(char *filename) {
   sd_read_multiblock(media_file.buffer[1], media_file.block, 4, &media_file.buffer_ready[1]);
   /* don't need the fd we used to open the file with now */
   sdfat_close(fn);
-  iprintf("media_file.cluster = %d\n", media_file.cluster);
-  iprintf("sdfat_open_media - exit\n");
+  iprintf("media_file.cluster = %d\r\n", media_file.cluster);
+  iprintf("sdfat_open_media - exit\r\n");
   int i, j;
   for(i=0;i<16;i++) {
     for(j=0;j<32;j++) {
@@ -630,7 +631,7 @@ char *sdfat_open_media(char *filename) {
     for(j=0;j<32;j++) {
       iprintf("%c", media_file.buffer[0][i*32 + j]);
     }
-    iprintf("\n");
+    iprintf("\r\n");
   }
   //while(1) {;}
   return media_file.buffer[0];
