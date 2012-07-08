@@ -33,6 +33,7 @@
 #include "sdfat.h"
 #include "nd_usart.h"
 #include "sd.h"
+#include "vs1053.h"
 
 extern SDCard card;
 
@@ -90,6 +91,9 @@ int main(void)
         lcdPrintPortrait(de->d_name, 5);
         
         gpio_set(RED_LED_PORT, RED_LED_PIN);
+        
+        codec_init();
+        codec_demo();
 
 	/* Blink the LED (PC12) on the board. */
 	while (1) {

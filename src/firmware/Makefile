@@ -32,7 +32,7 @@ LDFLAGS		+= -Wl,--start-group -lc -lgcc -Wl,--end-group \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
 OBJS		+= $(BINARY).o lcd.o font_portrait.o icons.o ui.o sd.o \
-		   sdfat.o dirent.o syscalls.o nd_usart.o
+		   sdfat.o dirent.o syscalls.o nd_usart.o vs1053.o
 
 # Be silent per default, but 'make V=1' will show all compiler calls.
 ifneq ($(V),1)
