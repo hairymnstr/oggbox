@@ -48,6 +48,9 @@ void gpio_setup(void)
         rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
         rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPDEN);
 
+        gpio_set(GPIOB, GPIO5);
+        gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ,
+                      GPIO_CNF_OUTPUT_PUSHPULL, GPIO5);
 	/* Set GPIO12 (in GPIO port C) to 'output push-pull'. */
 	/* Manually: */
 	// GPIOC_CRH = (GPIO_CNF_OUTPUT_PUSHPULL << (((12 - 8) * 4) + 2));
@@ -65,6 +68,13 @@ int main(void)
         // remap JTAG as GPIO for the buttons
         AFIO_MAPR = AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF;
 
+        /*
+         * If the RTC is pre-configured just allow access, don't reconfigure.
+         * Otherwise enable it with the LSE as clock source and 0x7fff as
+         * prescale value.
+         */
+        rtc_auto_awake(LSE, 0x7fff);
+        
         usart_clock_setup();
 	gpio_setup();
         usart_setup();
@@ -93,14 +103,14 @@ int main(void)
     
 //         lcdPrintPortrait(de->d_name, 5);
         
-        gpio_set(RED_LED_PORT, RED_LED_PIN);
+//         gpio_set(RED_LED_PORT, RED_LED_PIN);
         
         init_codec();
 //         demo_codec();
-        play_file_fast("/part01~1.ogg");
-//         play_file_fast("/02-THE~1.OGG");
-//   iprintf("First file finished. Playing another...\n");
-// play_file("/magicc~1.ogg");
+//         play_file_fast("/part01~1.ogg");
+        play_file_fast("/02-THE~1.OGG");
+  iprintf("First file finished. Playing another...\n");
+play_file("/magicc~1.ogg");
   
 	/* Blink the LED (PC12) on the board. */
 	while (1) {
@@ -121,12 +131,12 @@ int main(void)
 		// 	__asm__("nop");
 
 		/* Using API function gpio_toggle(): */
-		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN);	/* LED on/off */
+// 		gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN);	/* LED on/off */
 		for (i = 0; i < 10000; i++)    {	/* Wait a bit. */
-			if(gpio_port_read(GPIOD) & 4)
-                          gpio_set(RED_LED_PORT, RED_LED_PIN);
-                        else
-                          gpio_clear(RED_LED_PORT, RED_LED_PIN);
+// 			if(gpio_port_read(GPIOD) & 4)
+//                           gpio_set(RED_LED_PORT, RED_LED_PIN);
+//                         else
+//                           gpio_clear(RED_LED_PORT, RED_LED_PIN);
                         
 //                         uiShowSD(!gpio_get(GPIOC, GPIO13));
 //                         uiShowLocked(gpio_port_read(GPIOD) & 4);
