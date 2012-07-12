@@ -1,10 +1,54 @@
 import random
 
-NODE_SIZE = 7
+NODE_SIZE = 8
 NODE_MID_POINTER = 4
 NODE_1ST_KEY = 3
 NODE_2ND_KEY = 4
 NODE_PASS_KEY = 3
+
+def output(val=False):
+  global head
+  global fw
+  jobs = [('Root', head)]
+  namelookup = {id(head): 'Root'}
+  tableno = 1
+  while(len(jobs)):
+    if val and jobs[0][0] == 'Root':
+      fw.write("Store %s\n" % val)
+    fw.write("<h2>%s</h2>\n" % jobs[0][0])
+    if jobs[0][1].parent != None:
+      fw.write("<h3>Parent: %s</h3>" % namelookup[id(jobs[0][1].parent)])
+    else:
+      fw.write("<h3>Parent: None</h3>")
+    fw.write("<table>\n")
+    fw.write("<tr>");
+    fw.write("<td></td>")
+    for i in range(NODE_SIZE):
+      if(len(jobs[0][1].keys) > i):
+        fw.write("<td>%s</td><td></td>" % (str(jobs[0][1].keys[i])))
+      else:
+        fw.write("<td></td><td></td>")
+
+    fw.write("</tr>\n<tr>")
+
+    for i in range(NODE_SIZE+1):
+      if(len(jobs[0][1].pointers) > i):
+        if jobs[0][1].isleaf:
+          fw.write("<td>%s</td><td></td>" % (str(jobs[0][1].pointers[i])))
+        else:
+          fw.write("<td>Table %d</td><td></td>" % (tableno))
+          jobs.append(("Table %d" % (tableno), jobs[0][1].pointers[i]))
+          namelookup[id(jobs[0][1].pointers[i])] = ("Table %d" % tableno)
+          tableno += 1
+      else:
+        fw.write("<td></td><td></td>")
+
+    fw.write("</tr>")
+    fw.write("</table>")
+
+    jobs = jobs[1:]
+
+  fw.write("<hr/>\r\n")
 
 class Node:
   def __init__(self):
@@ -12,10 +56,13 @@ class Node:
     self.keys = []
     self.parent = None
     self.isleaf = False
+    self.leftmost = False
+    self.minval = 0xffffffffffffffff
 
 dbsize = 0
 head = Node()
 head.isleaf = True
+head.leftmost = True
 
 def dbinsert(pointer, key, node, recurse=True):
   global head
@@ -28,8 +75,11 @@ def dbinsert(pointer, key, node, recurse=True):
     node.keys.append(key)
   elif dbsize == 1:
     if node.keys[0] > key:
+#      node.keys = [key] + node.keys
       node.pointers = [pointer] + node.pointers
+      node.minval = key
     else:
+      node.minval = node.keys[0]
       node.keys[0] = key
       node.pointers.append(pointer)
   else:
@@ -44,10 +94,16 @@ def dbinsert(pointer, key, node, recurse=True):
       dbinsert(pointer, key, node.pointers[i])
     else:
       if len(node.keys) < NODE_SIZE:
-        node.pointers = node.pointers[:i+1] + [pointer] + node.pointers[i+1:]
         if isinstance(pointer, Node):
+          print "Making pointer parent node"
           pointer.parent = node
-        node.keys = node.keys[:i] + [key] + node.keys[i:]
+        if node.leftmost and key < node.minval:
+          node.pointers = [pointer] + node.pointers
+          node.keys = [node.minval] + node.keys
+          node.minval = key
+        else:
+          node.pointers = node.pointers[:i+1] + [pointer] + node.pointers[i+1:]
+          node.keys = node.keys[:i] + [key] + node.keys[i:]
       else:
         sibling = Node()
         sibling.pointers = node.pointers[NODE_MID_POINTER:]
@@ -60,6 +116,7 @@ def dbinsert(pointer, key, node, recurse=True):
         if node.parent == None:
           node.parent = Node()
           node.parent.pointers.append(node)
+          sibling.parent = node.parent
           node.parent.pointers.append(sibling)
           node.parent.keys.append(node.keys[NODE_PASS_KEY])
           head = node.parent
@@ -74,48 +131,19 @@ def dbinsert(pointer, key, node, recurse=True):
   dbsize += 1
 
 if __name__ == "__main__":
-  random.seed()
-  for i in range(30):
-    field = (random.randrange(2000), random.randrange(2000))
-    print field
-    dbinsert(field, field[0], head)
   fw = file("debug.html", "w")
 
   fw.write("<html><head><title>DB Debug</title></head><body>")
-  
-  jobs = [("root", head)]
-  tableno = 1
 
-  while(len(jobs)):
-    fw.write("<h2>%s</h2>\n" % jobs[0][0])
+  random.seed()
+  for i in range(30):
+    field = (random.randrange(2000), random.randrange(2000))
+    dbinsert(field, field[0], head)
+    output(str(field))
 
-    fw.write("<table>\n")
-    fw.write("<tr>");
-    fw.write("<td></td>")
-    for i in range(NODE_SIZE):
-      if(len(jobs[0][1].keys) > i):
-        fw.write("<td>%s</td><td></td>" % (str(jobs[0][1].keys[i])))
-      else:
-        fw.write("<td></td><td></td>")
-
-    fw.write("</tr>\n<tr>")
-
-    for i in range(NODE_SIZE):
-      if(len(jobs[0][1].pointers) > i):
-        if jobs[0][1].isleaf:
-          fw.write("<td>%s</td><td></td>" % (str(jobs[0][1].pointers[i])))
-        else:
-          fw.write("<td>Table %d</td><td></td>" % (tableno))
-          jobs.append(("Table %d" % (tableno), jobs[0][1].pointers[i]))
-          tableno += 1
-      else:
-        fw.write("<td></td><td></td>")
-
-    fw.write("</tr>")
-    fw.write("</table>")
-
-    jobs = jobs[1:]
+  output()
 
   fw.write("</body></html>")
   fw.close()
+
 
