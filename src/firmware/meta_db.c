@@ -181,3 +181,7 @@ int meta_db_insert(void *ptr, uint64_t key, Node *n, int isdata, struct db_conte
   }
   return 0;
 }
+
+uint32_t meta_db_allocate_block(struct db_context *context) {
+  return context->next_block++;
+}
