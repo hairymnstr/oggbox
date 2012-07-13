@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "meta_db.h"
 
@@ -48,7 +49,30 @@
 //   
 // }
 
+uint64_t meta_db_string_hash(char *input) {
+  uint64_t hash = 0;
+  char temp[8];
+  int i;
+  strncpy(temp, input, 8);
+  for(i=0;i<8;i++) {
+    if((temp[i] >= 'a') && (temp[i] <= 'z')) {
+      temp[i] -= ('a' - 'A');
+    }
+  }
+  if(strcmp(temp, "THE ") == 0) {
+    return meta_db_string_hash(&input[4]);
+  }
+  
+  for(i=0;i<8;i++) {
+    hash += (temp[i] << (8 * (7-i)));
+  }
+  return hash;
+}
+
 /*************************************************************************************************/
+/* Generic B-Tree database with minimal memory footprint functions below                         */
+/*************************************************************************************************/
+
 void meta_db_init(struct db_context *c) {
   c->head = (Node *)malloc(sizeof(Node));
   c->head->pointers_len = 0;
@@ -182,6 +206,6 @@ int meta_db_insert(void *ptr, uint64_t key, Node *n, int isdata, struct db_conte
   return 0;
 }
 
-uint32_t meta_db_allocate_block(struct db_context *context) {
-  return context->next_block++;
-}
+// uint32_t meta_db_allocate_block(struct db_context *context) {
+//   return context->next_block++;
+// }

@@ -5,8 +5,6 @@
 
 #include "meta_db.h"
 
-extern Node *db_g_head;
-
 void dbgoutput(FILE *fw, uint64_t item, Node *head) {
   char job_names[50][50];
   Node *job_pointers[50];

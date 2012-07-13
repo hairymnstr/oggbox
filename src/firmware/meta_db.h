@@ -44,6 +44,8 @@ struct db_context {
   int size;
 };
 
+uint64_t meta_db_string_hash(char *);
+
 void meta_db_init(struct db_context *);
 int meta_db_insert(void *, uint64_t, Node *, int, struct db_context *);
 #endif /* ifndef META_DB_H */
