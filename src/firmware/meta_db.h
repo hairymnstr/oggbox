@@ -1,7 +1,7 @@
 #ifndef META_DB_H
 #define META_DB_H 1
 
-#include <meta.h>
+#include "meta.h"
 
 #define METADB_NODE_SIZE 7
 #define METADB_MID_PTR 4
@@ -29,7 +29,7 @@ struct track {
 };
 
 typedef struct Snode {
-  void pointers[METADB_NODE_SIZE+1];
+  void* pointers[METADB_NODE_SIZE+1];
   int pointers_len;
   uint64_t keys[METADB_NODE_SIZE];
   int keys_len;
@@ -39,4 +39,11 @@ typedef struct Snode {
   uint64_t minval;
 } Node;
 
+struct db_context {
+  Node *head;
+  int size;
+};
+
+void meta_db_init(struct db_context *);
+int meta_db_insert(void *, uint64_t, Node *, int, struct db_context *);
 #endif /* ifndef META_DB_H */

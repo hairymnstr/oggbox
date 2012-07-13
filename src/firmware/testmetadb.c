@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "meta_db.h"
+
+extern Node *db_g_head;
 
 void dbgoutput(FILE *fw, uint64_t item, Node *head) {
   char job_names[50][50];
@@ -10,6 +13,10 @@ void dbgoutput(FILE *fw, uint64_t item, Node *head) {
   int job_front = 0;
   int job_end = 1;
   int tableno = 1;
+  int i;
+  
+  strcpy(job_names[0], "Root");
+  job_pointers[0] = head;
   
   fprintf(fw, "Store %lu\n", item);
   while(job_front != job_end) {
@@ -19,24 +26,58 @@ void dbgoutput(FILE *fw, uint64_t item, Node *head) {
     fprintf(fw, "<tr>");
     fprintf(fw, "<td></td>");
     for(i=0;i<METADB_NODE_SIZE;i++) {
-      if(jobs_pointers[job_front]->keys_len > i)
+      if(job_pointers[job_front]->keys_len > i)
         fprintf(fw, "<td>%lu</td><td></td>", job_pointers[job_front]->keys[i]);
       else
         fprintf(fw, "<td></td><td></td>");
     }
-    fprintf(fw, "</tr>\n<tr>")
+    fprintf(fw, "</tr>\n<tr>");
     
     for(i=0;i<METADB_NODE_SIZE+1;i++) {
-      if(
+      if(job_pointers[job_front]->pointers_len > i) {
+        if(job_pointers[job_front]->isleaf) {
+          fprintf(fw, "<td>%p</td><td></td>", job_pointers[job_front]->pointers[i]);
+        } else {
+          fprintf(fw, "<td>Table %d</td><td></td>", tableno);
+          sprintf(job_names[job_end], "Table %d", tableno++);
+          job_pointers[job_end++] = job_pointers[job_front]->pointers[i];
+        }
+      } else {
+        fprintf(fw, "<td></td><td></td>");
+      }
+    }
+    fprintf(fw, "</tr>\n<tr>");
+    
+    for(i=0;i<METADB_NODE_SIZE+1;i++) {
+      if(job_pointers[job_front]->pointers_len > i) {
+        if(job_pointers[job_front]->isleaf) {
+          fprintf(fw, "<td>%lu</td><td></td>", *((uint64_t *)(job_pointers[job_front]->pointers[i])));
+        } else {
+          fprintf(fw, "<td></td><td></td>");
+        }
+      } else {
+        fprintf(fw, "<td></td><td></td>");
+      }
+    }  
+    fprintf(fw, "</tr>");
+    fprintf(fw, "</table>");
+    
+    job_front++;
+    
+  }
+  
+  fprintf(fw, "<hr/>\n\n");
+  
+  return;
 }
 
 int main(int argc, char *argv[]) {
-  FILE *fw;
+  FILE *fw, *frandom;
   int i;
   uint64_t *item;
-  Node *head;
+  struct db_context context;
   
-  head = (Node *)malloc(sizeof(Node));
+  meta_db_init(&context);
 
   fw = fopen("debug.html", "w");
 
@@ -45,13 +86,16 @@ int main(int argc, char *argv[]) {
   frandom = fopen("/dev/urandom", "rb");
   for(i=0;i<30;i++) {
     item = (uint64_t *)malloc(sizeof(uint64_t));
-    fread(item, sizeof(uint64_t), 1, frandom);
+    *item = 0;
+    fread(item, 1, 1, frandom);
 
-    dbinsert(item, *item, &head, -1);
+    meta_db_insert(item, *item, context.head, -1, &context);
 
-    dbgoutput(fw, *item, head);
+    dbgoutput(fw, *item, context.head);
   }
-  dbgoutput(fw, 0, head);
+  dbgoutput(fw, 0, context.head);
+  
+  fprintf(fw, "Database size: %d\n", context.size);
 
   fprintf(fw, "</body></html>");
   fclose(fw);
