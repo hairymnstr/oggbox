@@ -37,10 +37,26 @@ void job_system_refresh() {
   int i;
   for(i=0;i<JOB_SYSTEM_COUNT;i++) {
     if(job_system_tasks[i].status == JOB_SYSTEM_DONE) {
+      job_system_tasks[i].status = JOB_SYSTEM_PENDING;
       job_add(job_system_tasks[i].task);
     }
   }
 }
 
 int job_register_system_task(void *task) {
-  while(
+  int i;
+  for(i=0;i<JOB_SYSTEM_COUNT;i++) {
+    if(job_system_tasks[i].status == JOB_SYSTEM_UNUSED) {
+      break;
+    }
+  }
+  if(i<JOB_SYSTEM_COUNT) {
+    job_system_tasks[i].task = task;
+    job_system_tasks[i].status = JOB_SYSTEM_DONE;
+    return i;
+  } else {
+    return -1;
+  }
+}
+
+  
