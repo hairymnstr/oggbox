@@ -127,8 +127,10 @@ typedef struct {
   uint32_t  file_sector;
 } __attribute__((__packed__)) FileS;
 
+#define MEDIA_BUFFER_SIZE 2048
+
 typedef struct {
-  char buffer[2][2048];
+  char buffer[2][MEDIA_BUFFER_SIZE];
   char meta_buffer[512];
   int  meta_block;
   int  cluster;

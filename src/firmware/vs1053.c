@@ -328,3 +328,96 @@ void play_file_fast(char *filename) {
   return;
 }
 
+void play_file_fast_async(char *filename) {
+  int i, j=0, k; //l, fn;
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  vs1053_SCI_write(0x00, 0xc00);
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  vs1053_SCI_write(SCI_VOL, 0x1010);
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_256);
+  vs1053_SCI_write(SCI_CLOCKF, 0xF800);
+  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_16);
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+  iprintf("after setup 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
+
+
+//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
+//  vs1053_SCI_write(SCI_CLOCKF, 0xA000);
+//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
+
+  sdfat_open_media(filename);
+
+  // now to set up the external interrupt on DREQ
+  // may need to trigger the first service in software too as we probably won't get an edge
+  
+}
+
+void exti3_isr() {
+  int i;
+  uint16_t endFillByte;
+  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
+    gpio_set(CODEC_PORT, CODEC_CS);
+    if(!media_file.near_end) {
+      for(i=0;i<32;i++) {
+        spi_xfer(media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
+      }
+      if((current_track.byte_count % 512) == 0) {
+        gpio_clear(CODEC_PORT, CODEC_CS);
+      }
+      if(current_track.byte_count == MEDIA_BUFFER_SIZE) {
+        sdfat_read_media();
+        current_track.byte_count = 0;
+      }
+    } else {
+      for(i=0;i<32;i++) {
+        if(current_track.byte_count > media_file.file_end) {
+          
+          // Ought to do this next bit by issuing a player_stop job so that the cleanup code
+          // is all in one place and we can power down everything automatically for power saving
+          
+          /* now need to clean up the fifos and stop the player */
+          gpio_clear(CODEC_PORT, CODEC_CS);
+          /* fetch the value of endFillByte */
+          vs1053_SCI_write(SCI_WRAMADDR, PARAM_END_FILL_BYTE);
+          while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+          endFillByte = vs1053_SCI_read(SCI_WRAM) & 0xFF;
+
+          gpio_set(CODEC_PORT, CODEC_CS);
+          for(i=0;i<65;i++) {
+            while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+            for(j=0;j<32;j++) {
+              spi_msg(endFillByte);
+            }
+          }
+          gpio_clear(CODEC_PORT, CODEC_CS);
+          i = vs1053_SCI_read(SCI_MODE);
+          i |= SM_CANCEL;
+          vs1053_SCI_write(SCI_MODE, i);
+          gpio_set(CODEC_PORT, CODEC_CS);
+          j = 0;
+          while(j < 2048) {
+            while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
+            for(i=0;i<32;i++) {
+              spi_msg(endFillByte);
+            }
+            j += 32;
+            if(!(vs1053_SCI_read(SCI_MODE) & SM_CANCEL)) {
+              break;
+            }
+          }
+          gpio_clear(CODEC_PORT, CODEC_CS);
+          if(j >= 2048) {
+            /* need to do a software reset */
+            vs1053_SCI_write(SCI_MODE, SM_RESET);
+          }
+          return;
+        } else {
+          spi_xfer(media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
+        }
+      }
+    }
+  }
+}
