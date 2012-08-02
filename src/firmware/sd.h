@@ -36,8 +36,9 @@
 /* Constants used to define card types */
 #define SD_CARD_NONE  0    /* No SD card found */
 #define SD_CARD_MMC   1    /* MMC card */
-#define SD_CARD_SC    2    /* Standard capacity SD card */
-#define SD_CARD_HC    3    /* High capacity SD card */
+#define SD_CARD_SC    2    /* Standard capacity SD card (up to 2GB)*/
+#define SD_CARD_HC    3    /* High capacity SD card (4GB to 32GB)*/
+#define SD_CARD_XC    4    /* eXtended Capacity SD card (up to 2TB  - Untested may work if FAT32 */
 #define SD_CARD_ERROR 99   /* An error occured during setup */
 
 /* SPI commands */

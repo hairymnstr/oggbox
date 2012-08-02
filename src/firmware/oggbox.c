@@ -36,6 +36,7 @@
 #include "vs1053.h"
 
 extern SDCard card;
+extern struct player_status current_track;
 
 void gpio_setup(void)
 {
@@ -62,28 +63,27 @@ void gpio_setup(void)
 
 int main(void)
 {
-	int i;
+  int i;
 //         DIR *dr;
 //         struct dirent *de;
         // remap JTAG as GPIO for the buttons
-        AFIO_MAPR = AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF;
-
+  AFIO_MAPR = AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF;
+  gpio_setup();
         /*
          * If the RTC is pre-configured just allow access, don't reconfigure.
          * Otherwise enable it with the LSE as clock source and 0x7fff as
          * prescale value.
          */
-        rtc_auto_awake(LSE, 0x7fff);
+  rtc_auto_awake(LSE, 0x7fff);
         
-        usart_clock_setup();
-	gpio_setup();
-        usart_setup();
+  usart_clock_setup();
+  usart_setup();
         
-        //         lcdInit();
+  lcdInit();
         
-//         lcdClear();
+  lcdClear();
         
-//         lcdBacklight(0);
+  lcdBacklight(0);
         
         sdfat_init();
         iprintf("Mount SD: %d\r\n", sdfat_mount());
@@ -94,8 +94,8 @@ int main(void)
         
 //         uiShowSD(gpio_port_read(GPIOD) & 4);    // SD absent
         
-//         lcdPrintPortrait(" OggBox", 2);
-//         lcdPrintPortrait("  RevA", 3);
+  lcdPrintPortrait(" OggBox", 2);
+  lcdPrintPortrait("  RevA", 3);
 //     dr = opendir("/");
 //     iprintf("dr = %p\r\n", dr);
 //     de = readdir(dr);
@@ -105,12 +105,13 @@ int main(void)
         
 //         gpio_set(RED_LED_PORT, RED_LED_PIN);
         
-        init_codec();
+  init_codec();
 //         demo_codec();
 //         play_file_fast("/part01~1.ogg");
-        play_file_fast("/02-THE~1.OGG");
-  iprintf("First file finished. Playing another...\n");
-play_file("/magicc~1.ogg");
+  play_file_fast_async("/02-THE~1.OGG");
+  lcdPrintPortrait(" Playing", 5);
+  while(current_track.playing) {__asm__("nop\n\t");}
+  play_file("/magicc~1.ogg");
   
 	/* Blink the LED (PC12) on the board. */
 	while (1) {

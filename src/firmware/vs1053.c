@@ -11,6 +11,8 @@
 extern FileS file_num[];
 extern MediaFileS media_file;
 
+struct player_status current_track;
+
 /**
  *  PRIVATE FUNCTION
  *  spi_msg - lowest level SPI transfer function.
@@ -350,14 +352,27 @@ void play_file_fast_async(char *filename) {
 
   sdfat_open_media(filename);
 
+  current_track.byte_count = 0;
+  current_track.playing = 1;
   // now to set up the external interrupt on DREQ
   // may need to trigger the first service in software too as we probably won't get an edge
+  rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
   
+  nvic_enable_irq(NVIC_EXTI3_IRQ);
+  
+  exti_select_source(EXTI3, CODEC_DREQ_PORT);
+  exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
+  exti_enable_request(EXTI3);
+  
+  // generate a software interrupt to get this thing started as there shouldn't be any edges
+  EXTI_SWIER |= EXTI3;
 }
 
 void exti3_isr() {
   int i;
   uint16_t endFillByte;
+  exti_reset_request(EXTI3);
+  gpio_set(GREEN_LED_PORT, GREEN_LED_PIN);
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
     gpio_set(CODEC_PORT, CODEC_CS);
     if(!media_file.near_end) {
@@ -413,6 +428,12 @@ void exti3_isr() {
             /* need to do a software reset */
             vs1053_SCI_write(SCI_MODE, SM_RESET);
           }
+          
+          current_track.playing = 0;
+          
+          exti_reset_request(EXTI3);
+          exti_disable_request(EXTI3);
+          nvic_disable_request(NVIC_EXTI3_IRQ);
           return;
         } else {
           spi_xfer(media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
@@ -420,4 +441,5 @@ void exti3_isr() {
       }
     }
   }
+  gpio_clear(GREEN_LED_PORT, GREEN_LED_PIN);
 }
