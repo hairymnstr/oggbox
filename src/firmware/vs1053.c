@@ -410,7 +410,7 @@ void exti3_isr(void) {
           for(i=0;i<65;i++) {
             while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
             for(j=0;j<32;j++) {
-              spi_msg(endFillByte);
+              spi_xfer(CODEC_SPI, endFillByte);
             }
           }
           gpio_clear(CODEC_PORT, CODEC_CS);
@@ -422,7 +422,7 @@ void exti3_isr(void) {
           while(j < 2048) {
             while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
             for(i=0;i<32;i++) {
-              spi_msg(endFillByte);
+              spi_xfer(CODEC_SPI, endFillByte);
             }
             j += 32;
             if(!(vs1053_SCI_read(SCI_MODE) & SM_CANCEL)) {
