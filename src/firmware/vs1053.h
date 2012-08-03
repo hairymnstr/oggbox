@@ -67,7 +67,7 @@
 #define PARAM_END_FILL_BYTE 0x1E06    /* address of fill byte in X RAM */
 
 struct player_status {
-  int current_byte;
+  int byte_count;
   int playing;
 };
 

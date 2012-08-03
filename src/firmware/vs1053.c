@@ -2,16 +2,20 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/nvic.h>
+#include <libopencm3/stm32/exti.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
 #include "sdfat.h"
+#include "oggbox.h"
 //#include <fildes.h>
 
 extern FileS file_num[];
 extern MediaFileS media_file;
 
 struct player_status current_track;
+volatile int current_track_playing;
 
 /**
  *  PRIVATE FUNCTION
@@ -353,7 +357,7 @@ void play_file_fast_async(char *filename) {
   sdfat_open_media(filename);
 
   current_track.byte_count = 0;
-  current_track.playing = 1;
+  current_track_playing = 1;
   // now to set up the external interrupt on DREQ
   // may need to trigger the first service in software too as we probably won't get an edge
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
@@ -363,21 +367,22 @@ void play_file_fast_async(char *filename) {
   exti_select_source(EXTI3, CODEC_DREQ_PORT);
   exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
   exti_enable_request(EXTI3);
-  
   // generate a software interrupt to get this thing started as there shouldn't be any edges
   EXTI_SWIER |= EXTI3;
 }
 
-void exti3_isr() {
-  int i;
+void exti3_isr(void) {
+  int i, j;
   uint16_t endFillByte;
   exti_reset_request(EXTI3);
   gpio_set(GREEN_LED_PORT, GREEN_LED_PIN);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
+//   gpio_set(RED_LED_PORT, RED_LED_PIN);
+//   iprintf("fill bytes\r\n");
+  while(gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
     gpio_set(CODEC_PORT, CODEC_CS);
     if(!media_file.near_end) {
       for(i=0;i<32;i++) {
-        spi_xfer(media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
+        spi_xfer(CODEC_SPI, media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
       }
       if((current_track.byte_count % 512) == 0) {
         gpio_clear(CODEC_PORT, CODEC_CS);
@@ -389,7 +394,7 @@ void exti3_isr() {
     } else {
       for(i=0;i<32;i++) {
         if(current_track.byte_count > media_file.file_end) {
-          
+          iprintf("ending\r\n");
           // Ought to do this next bit by issuing a player_stop job so that the cleanup code
           // is all in one place and we can power down everything automatically for power saving
           
@@ -400,6 +405,7 @@ void exti3_isr() {
           while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
           endFillByte = vs1053_SCI_read(SCI_WRAM) & 0xFF;
 
+          iprintf("End Fill Byte %02X\r\n", endFillByte);
           gpio_set(CODEC_PORT, CODEC_CS);
           for(i=0;i<65;i++) {
             while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
@@ -428,15 +434,16 @@ void exti3_isr() {
             /* need to do a software reset */
             vs1053_SCI_write(SCI_MODE, SM_RESET);
           }
+          iprintf("End Fill Byte %02X\r\n", endFillByte);
           
-          current_track.playing = 0;
+          current_track_playing = 0;
           
           exti_reset_request(EXTI3);
           exti_disable_request(EXTI3);
-          nvic_disable_request(NVIC_EXTI3_IRQ);
+          nvic_disable_irq(NVIC_EXTI3_IRQ);
           return;
         } else {
-          spi_xfer(media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
+          spi_xfer(CODEC_SPI, media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
         }
       }
     }

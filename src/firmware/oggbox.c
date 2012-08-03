@@ -37,6 +37,7 @@
 
 extern SDCard card;
 extern struct player_status current_track;
+extern volatile int current_track_playing;
 
 void gpio_setup(void)
 {
@@ -108,9 +109,11 @@ int main(void)
   init_codec();
 //         demo_codec();
 //         play_file_fast("/part01~1.ogg");
-  play_file_fast_async("/02-THE~1.OGG");
+//   play_file_fast("/02-THE~1.OGG");
+play_file_fast_async("/02-THE~1.OGG");
   lcdPrintPortrait(" Playing", 5);
-  while(current_track.playing) {__asm__("nop\n\t");}
+  while(current_track_playing) {__asm__("nop\n\t");}
+  lcdPrintPortrait("Finished", 5);
   play_file("/magicc~1.ogg");
   
 	/* Blink the LED (PC12) on the board. */
