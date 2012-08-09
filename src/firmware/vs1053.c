@@ -1,3 +1,22 @@
+/*
+ * This file is part of the oggbox project.
+ *
+ * Copyright Nathan Dumont 2012 <nathan@nathandumont.com>
+ *
+ * This firmware is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "vs1053.h"
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/f1/rcc.h>
@@ -14,7 +33,7 @@
 extern FileS file_num[];
 extern MediaFileS media_file;
 
-struct player_status current_track;
+volatile struct player_status current_track;
 volatile int current_track_playing;
 
 /**
@@ -390,6 +409,18 @@ void exti3_isr(void) {
       if(current_track.byte_count == MEDIA_BUFFER_SIZE) {
         sdfat_read_media();
         current_track.byte_count = 0;
+        gpio_clear(CODEC_PORT, CODEC_CS);
+
+        /* fetch the value of current decode position */
+        vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_LO);
+        for(i=0;i<150;i++) {__asm__("nop\n\t");}
+        current_track.pos = vs1053_SCI_read(SCI_WRAM);
+        for(i=0;i<150;i++) {__asm__("nop\n\t");}
+        vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_HI);
+        for(i=0;i<150;i++) {__asm__("nop\n\t");}
+        current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
+        
+        gpio_set(CODEC_PORT, CODEC_CS);
       }
     } else {
       for(i=0;i<32;i++) {
@@ -448,5 +479,6 @@ void exti3_isr(void) {
       }
     }
   }
+
   gpio_clear(GREEN_LED_PORT, GREEN_LED_PIN);
 }

@@ -65,10 +65,13 @@
 #define SM_CLK_RANGE      0x8000
 
 #define PARAM_END_FILL_BYTE 0x1E06    /* address of fill byte in X RAM */
+#define PARAM_POSITION_LO   0x1e27
+#define PARAM_POSITION_HI   0x1e28    /* Ogg file playback position */
 
 struct player_status {
   int byte_count;
   int playing;
+  uint32_t pos;
 };
 
 void init_codec();

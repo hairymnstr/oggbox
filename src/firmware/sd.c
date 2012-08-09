@@ -1,22 +1,33 @@
-#include "sd.h"
-// #include "nd_usart.h"
-// #include "libopenstm32/gpio.h"
+/*
+ * This file is part of the oggbox project.
+ *
+ * Copyright Nathan Dumont 2012 <nathan@nathandumont.com>
+ *
+ * This firmware is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <libopencm3/stm32/f1/gpio.h>
-// #include "libopenstm32/spi.h"
 #include <libopencm3/stm32/spi.h>
-// #include "libopenstm32/rcc.h"
 #include <libopencm3/stm32/f1/rcc.h>
-// #include "libopenstm32/dma.h"
 #include <libopencm3/stm32/f1/dma.h>
-// #include "libopenstm32/nvic.h"
 #include <libopencm3/stm32/nvic.h>
 #include <libopencm3/stm32/f1/nvic_f1.h>
 
 #include <stdint.h>
-
+#include "sd.h"
 #include "mbr.h"
 #include "config.h"
-// #include <stdio.h>
 
 extern SDCard card;
 
