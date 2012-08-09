@@ -25,4 +25,7 @@ struct identification_header {
   uint8_t framing;
 } __attribute__((__packed__));
 
+uint32_t ogg_track_length_millis(char *filename);
+
 #endif
+

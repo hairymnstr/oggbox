@@ -558,6 +558,23 @@ int sdfat_read(int fd, void *buffer, int count) {
   return i;
 }
 
+int sdfat_seek(int fd, int ptr, int dir) {
+  if(!(available_files & (1 << fd))) {
+    return -1;    /* tried to seek on a file that's not open */
+  }
+  if(dir == SEEK_SET) {
+    new_pos = ptr;
+  } else if(dir == SEEK_CUR) {
+    new_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor;
+  } else {
+    new_pos = file_num[fd].size + ptr;
+  }
+  if((new_pos < 0) || (new_pos > file_num[fd].size)) {
+    return -1; /* tried to seek outside a file */
+  }
+  new_pos / 
+}
+
 int sdfat_stat(int fd, struct stat *st) {
   st->st_dev = 0;
   st->st_ino = 0;

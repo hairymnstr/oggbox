@@ -1,6 +1,8 @@
 #ifndef VS1053_H
 #define VS1053_H 1
 
+#include <stdint.h>
+
 #define CODEC_PORT      GPIOA
 #define CODEC_CS        GPIO4
 #define CODEC_SCK       GPIO5

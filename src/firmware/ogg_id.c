@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "ogg_meta.h"
 
-int ogg_track_length_millis(char *filename) {
-  int i;
+uint32_t ogg_track_length_millis(char *filename) {
   uint8_t segments;
   int32_t audio_sample_rate;
   int64_t granule;
   float samples_per_milli;
-  int millis;
+  uint32_t millis;
   char buf[4];
   FILE *fr;
   if(!(fr = fopen(filename, "rb"))) {
@@ -34,7 +34,7 @@ int ogg_track_length_millis(char *filename) {
     if(ftell(fr) > 1) {
       fseek(fr, -2, SEEK_CUR);
     } else {
-      return -1;
+      return -2;
     }
   }
   
@@ -49,8 +49,8 @@ int ogg_track_length_millis(char *filename) {
   return millis;
 }
   
-int main(int argc, char *argv[]) {
-  printf("Track is %d milliseconds long\n", ogg_track_length_millis(argv[1]));
+//int main(int argc, char *argv[]) {
+//  printf("Track is %d milliseconds long\n", ogg_track_length_millis(argv[1]));
 //   uint8_t segment_table, page_segments;
 //   int i, page_len;
 //   struct identification_header id;
@@ -122,5 +122,5 @@ int main(int argc, char *argv[]) {
 //   printf("Last granule position %ld\n", ph.absolute_granule_position);
 //   printf("File length %lf\n", (double)ph.absolute_granule_position / (double)id.audio_sample_rate);
 //   
-  exit(0);
-}
+//  exit(0);
+//}

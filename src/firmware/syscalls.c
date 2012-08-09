@@ -95,9 +95,8 @@ int _isatty(int fd) {
   return(1);      // not implemented
 }
 
-int _lseek(int fd, int ptr,int dir) {
-  write_std_out("_lseek\n", 7);
-  return (-1);    // not implemented
+int _lseek(int fd, int ptr, int dir) {
+  return sdfat_close(fd - FIRST_DISC_FILENO, ptr, dir);
 }
 
 int _open_r(struct _reent *ptr, const char *name, int mode) {

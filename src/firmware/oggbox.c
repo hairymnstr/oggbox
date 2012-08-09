@@ -31,6 +31,7 @@
 #include "nd_usart.h"
 #include "sd.h"
 #include "vs1053.h"
+#include "ogg_meta.h"
 
 extern SDCard card;
 extern volatile struct player_status current_track;
@@ -57,6 +58,7 @@ void gpio_setup(void)
 int main(void)
 {
   int i;
+  int len;
   char progress[9];
   /* Turn off the JTAG port until next reset */
   AFIO_MAPR = AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF;
@@ -85,10 +87,13 @@ int main(void)
 //         demo_codec();
 //         play_file_fast("/part01~1.ogg");
 //   play_file_fast("/02-THE~1.OGG");
+  len = ogg_track_length_millis("/02-THE~1.OGG");
+  snprintf(progress, 9, "%d", len);
+  lcdPrintPortrait(progress, 8);
   play_file_fast_async("/02-THE~1.OGG");
   lcdPrintPortrait(" Playing", 5);
   while(current_track_playing) {
-    snprintf(progress, 9, "%d", current_track.pos);
+    snprintf(progress, 9, "%d%%", (current_track.pos * 100) / len );
     lcdPrintPortrait(progress, 6);
   }
   lcdPrintPortrait("Finished", 5);
