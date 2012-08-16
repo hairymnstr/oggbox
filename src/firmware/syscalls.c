@@ -53,7 +53,7 @@ int _stat(char *file, struct stat *st) {
 int _fstat (int fd, struct stat * st) {
   write_std_out("_fstat", 6);
   write_std_out((char *)&fd, 4);
-  write_std_out("\n", 1);
+  write_std_out("\r\n", 2);
   if (fd == STDOUT_FILENO) {
     memset(st, 0, sizeof (* st));
     st->st_mode = S_IFCHR;
@@ -74,7 +74,7 @@ caddr_t _sbrk_r(void *reent, size_t incr) {
   static char *heap_end;
   char *prev_heap_end;
 
-  write_std_out("_sbrk\n", 6);
+  write_std_out("_sbrk\r\n", 6);
 
   if( heap_end == NULL )
     heap_end = &end;
@@ -91,16 +91,17 @@ caddr_t _sbrk_r(void *reent, size_t incr) {
 }
 
 int _isatty(int fd) {
-  write_std_out("_isatty\n", 8);
+  write_std_out("_isatty\r\n", 8);
   return(1);      // not implemented
 }
 
 int _lseek(int fd, int ptr, int dir) {
+//   iprintf("_lseek %d, %d, %d\r\n", fd, ptr, dir);
   if(fd < FIRST_DISC_FILENO) {
     // tried to seek on stdin/out/err
-    return -1;
+    return ptr-1;
   }
-  return sdfat_seek(fd - FIRST_DISC_FILENO, ptr, dir);
+  return sdfat_lseek(fd - FIRST_DISC_FILENO, ptr, dir);
 }
 
 int _open_r(struct _reent *ptr, const char *name, int mode) {

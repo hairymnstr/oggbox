@@ -560,12 +560,20 @@ int sdfat_read(int fd, void *buffer, int count) {
   return i;
 }
 
-int sdfat_seek(int fd, int ptr, int dir) {
+int sdfat_lseek(int fd, int ptr, int dir) {
   int new_pos;
+  int new_sec;
   int i;
   int file_cluster;
+//   if(dir == SEEK_CUR) {
+//     iprintf("sdfat_seek %d, %d, SEEK_CUR\r\n", fd, ptr);
+//   } else if(dir == SEEK_SET) {
+//     iprintf("sdfat_seek %d, %d, SEEK_SET\r\n", fd, ptr);
+//   } else if(dir == SEEK_END) {
+//     iprintf("sdfat_seek %d, %d, SEEK_END\r\n", fd, ptr);
+//   }
   if(!(available_files & (1 << fd))) {
-    return -1;    /* tried to seek on a file that's not open */
+    return ptr-1;    /* tried to seek on a file that's not open */
   }
   
   if(file_num[fd].dirty) {
@@ -579,7 +587,8 @@ int sdfat_seek(int fd, int ptr, int dir) {
     new_pos = file_num[fd].size + ptr;
   }
   if((new_pos < 0) || (new_pos > file_num[fd].size)) {
-    return -1; /* tried to seek outside a file */
+//     iprintf("Seek too far\r\n");
+    return ptr-1; /* tried to seek outside a file */
   }
   file_cluster = new_pos / (card.sectors_per_cluster * 512);
   
@@ -592,14 +601,16 @@ int sdfat_seek(int fd, int ptr, int dir) {
   }
   file_num[fd].file_sector = new_pos / 512;
   file_num[fd].cursor = new_pos & 0x1ff;
-  new_pos = new_pos - file_cluster * card.sectors_per_cluster * 512;
-  new_pos = new_pos / 512;
-  file_num[fd].sector = file_num[fd].cluster * card.sectors_per_cluster + card.cluster0 + new_pos;
-  file_num[fd].sectors_left = card.sectors_per_cluster - new_pos - 1;
+  new_sec = new_pos - file_cluster * card.sectors_per_cluster * 512;
+  new_sec = new_sec / 512;
+  file_num[fd].sector = file_num[fd].cluster * card.sectors_per_cluster + card.cluster0 + new_sec;
+  file_num[fd].sectors_left = card.sectors_per_cluster - new_sec - 1;
   if(sd_read_block(file_num[fd].buffer, file_num[fd].sector)) {
-    return -1;
+//     iprintf("Can't read the block :(\r\n");
+    return ptr-1;
   }
-  return 0;
+//   iprintf("Seek worked returning %d\r\n", new_pos);
+  return new_pos;
 }
 
 int sdfat_stat(int fd, struct stat *st) {

@@ -15,13 +15,17 @@ uint32_t ogg_track_length_millis(char *filename) {
   if(!(fr = fopen(filename, "rb"))) {
     return -1;
   }
+//   iprintf("seek 26 SET\r\n");
   fseek(fr, 26, SEEK_SET);
+//   iprintf("tell=%d\r\n", ftell(fr));
   
   fread(&segments, 1, 1, fr);
+//   iprintf("seek %d CUR\r\n", segments + 7 + 5);
   fseek(fr, segments + 7 + 5, SEEK_CUR);
   
   fread(&audio_sample_rate, 4, 1, fr);
   
+//   iprintf("seek -4 END\r\n");
   fseek(fr, -4, SEEK_END);
   fread(buf, 1, 4, fr);
   fseek(fr, -5, SEEK_END);
