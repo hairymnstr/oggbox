@@ -96,7 +96,11 @@ int _isatty(int fd) {
 }
 
 int _lseek(int fd, int ptr, int dir) {
-  return sdfat_close(fd - FIRST_DISC_FILENO, ptr, dir);
+  if(fd < FIRST_DISC_FILENO) {
+    // tried to seek on stdin/out/err
+    return -1;
+  }
+  return sdfat_seek(fd - FIRST_DISC_FILENO, ptr, dir);
 }
 
 int _open_r(struct _reent *ptr, const char *name, int mode) {

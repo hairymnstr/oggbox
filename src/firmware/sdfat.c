@@ -276,6 +276,8 @@ int fatname_to_str(char *output, char *input) {
 /* write a sector back to disc */
 int sdfat_flush(int fd) {
   /* writing not yet implemented */
+  /* just clear this flag so this isn't called every time from now on */
+  file_num[fd].dirty = 0;
   return 0;
 }
 
@@ -321,7 +323,7 @@ int sdfat_next_cluster(int fd) {
     file_num[fd].error = FAT_END_OF_FILE;
     return -1;
   }
-  return sdfat_select_cluster(fd, j);
+  return j;
 }
 
 /* get the next sector in the current file. */
@@ -338,7 +340,7 @@ int sdfat_next_sector(int fd) {
     return sd_read_block(file_num[fd].buffer, ++file_num[fd].sector);
   } else {
     file_num[fd].file_sector++;
-    return sdfat_next_cluster(fd);
+    return sdfat_select_cluster(fd, sdfat_next_cluster(fd));
   }
 }
 
@@ -559,8 +561,15 @@ int sdfat_read(int fd, void *buffer, int count) {
 }
 
 int sdfat_seek(int fd, int ptr, int dir) {
+  int new_pos;
+  int i;
+  int file_cluster;
   if(!(available_files & (1 << fd))) {
     return -1;    /* tried to seek on a file that's not open */
+  }
+  
+  if(file_num[fd].dirty) {
+    sdfat_flush(fd);
   }
   if(dir == SEEK_SET) {
     new_pos = ptr;
@@ -572,7 +581,25 @@ int sdfat_seek(int fd, int ptr, int dir) {
   if((new_pos < 0) || (new_pos > file_num[fd].size)) {
     return -1; /* tried to seek outside a file */
   }
-  new_pos / 
+  file_cluster = new_pos / (card.sectors_per_cluster * 512);
+  
+  file_num[fd].cluster = file_num[fd].full_first_cluster;
+  i = 0;
+  // walk the FAT cluster chain until we get to the right one
+  while(i<file_cluster) {
+    file_num[fd].cluster = sdfat_next_cluster(fd);
+    i++;
+  }
+  file_num[fd].file_sector = new_pos / 512;
+  file_num[fd].cursor = new_pos & 0x1ff;
+  new_pos = new_pos - file_cluster * card.sectors_per_cluster * 512;
+  new_pos = new_pos / 512;
+  file_num[fd].sector = file_num[fd].cluster * card.sectors_per_cluster + card.cluster0 + new_pos;
+  file_num[fd].sectors_left = card.sectors_per_cluster - new_pos - 1;
+  if(sd_read_block(file_num[fd].buffer, file_num[fd].sector)) {
+    return -1;
+  }
+  return 0;
 }
 
 int sdfat_stat(int fd, struct stat *st) {
