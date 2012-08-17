@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -11,50 +13,52 @@ uint32_t ogg_track_length_millis(char *filename) {
   float samples_per_milli;
   uint32_t millis;
   char buf[4];
-  FILE *fr;
-  if(!(fr = fopen(filename, "rb"))) {
+  int fd;
+  fd = open(filename, O_RDONLY);
+  if(fd==-1) {
     return -1;
   }
+  
 //   iprintf("seek 26 SET\r\n");
-  fseek(fr, 26, SEEK_SET);
+  lseek(fd, 26, SEEK_SET);
 //   iprintf("tell=%d\r\n", ftell(fr));
   
-  fread(&segments, 1, 1, fr);
+  read(fd, &segments, 1);
 //   iprintf("seek %d CUR\r\n", segments + 7 + 5);
-  fseek(fr, segments + 7 + 5, SEEK_CUR);
+  lseek(fd, segments + 7 + 5, SEEK_CUR);
   
-  fread(&audio_sample_rate, 4, 1, fr);
+  read(fd, &audio_sample_rate, 4);
   
 //   iprintf("seek -4 END\r\n");
-  fseek(fr, -4, SEEK_END);
-  fread(buf, 1, 4, fr);
-  fseek(fr, -5, SEEK_END);
+  lseek(fd, -4, SEEK_END);
+  read(fd, buf, 4);
+  lseek(fd, -5, SEEK_END);
   while(strncmp("OggS", buf, 4) != 0) {
     buf[3] = buf[2];
     buf[2] = buf[1];
     buf[1] = buf[0];
-    fread(&buf[0], 1, 1, fr);
+    read(fd, &buf[0], 1);
       
-    if(ftell(fr) > 1) {
-      fseek(fr, -2, SEEK_CUR);
+    if(lseek(fd, 0, SEEK_CUR) > 1) {
+      lseek(fd, -2, SEEK_CUR);
     } else {
       return -2;
     }
   }
   
-  fseek(fr, 6 + 1, SEEK_CUR); /* we want the 6th byte on, looking 1 byte before now */
+  lseek(fd, 6 + 1, SEEK_CUR); /* we want the 6th byte on, looking 1 byte before now */
   
-  fread(&granule, 8, 1, fr);
+  read(fd, &granule, 8);
   
   samples_per_milli = audio_sample_rate / 1000.0;
   
   millis = granule / samples_per_milli;
-  fclose(fr);
+  close(fd);
   return millis;
 }
   
-//int main(int argc, char *argv[]) {
-//  printf("Track is %d milliseconds long\n", ogg_track_length_millis(argv[1]));
+// int main(int argc, char *argv[]) {
+//   printf("Track is %d milliseconds long\n", ogg_track_length_millis(argv[1]));
 //   uint8_t segment_table, page_segments;
 //   int i, page_len;
 //   struct identification_header id;
@@ -126,5 +130,5 @@ uint32_t ogg_track_length_millis(char *filename) {
 //   printf("Last granule position %ld\n", ph.absolute_granule_position);
 //   printf("File length %lf\n", (double)ph.absolute_granule_position / (double)id.audio_sample_rate);
 //   
-//  exit(0);
-//}
+//   exit(0);
+// }

@@ -579,6 +579,7 @@ int sdfat_lseek(int fd, int ptr, int dir) {
   if(file_num[fd].dirty) {
     sdfat_flush(fd);
   }
+  old_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor;
   if(dir == SEEK_SET) {
     new_pos = ptr;
   } else if(dir == SEEK_CUR) {
@@ -590,6 +591,23 @@ int sdfat_lseek(int fd, int ptr, int dir) {
 //     iprintf("Seek too far\r\n");
     return ptr-1; /* tried to seek outside a file */
   }
+  // optimisation cases
+  if((old_pos/512) == (new_pos/512)) {
+    // case 1: seeking within a disk block
+    file_num[fd].cursor = new_pos & 0x1ff;
+    return new_pos;
+  } else if((new_pos / (card.sectors_per_cluster * 512)) == (old_pos / (card.sectors_per_cluster * 512))) {
+    // case 2: seeking within the cluster, just need to hope forward/back some sectors
+    filenum[fd].file_sector = new_pos / 512;
+    filenum[fd].sector = filenum[fd].sector + (new_pos/512) - (old_pos/512);
+    filenum[fd].sectors_left = filenum[fd].sectors_left + (new_pos/512) - (old_pos/512);
+    filenum[fd].cursor = new_pos & 0x1ff;
+    if(sd_read_block(file_num[fd].buffer, file_num[fd].sector)) {
+      return ptr - 1;
+    }
+    return new_pos;
+  }
+  // otherwise we need to seek the cluster chain
   file_cluster = new_pos / (card.sectors_per_cluster * 512);
   
   file_num[fd].cluster = file_num[fd].full_first_cluster;
