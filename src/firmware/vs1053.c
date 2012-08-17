@@ -387,7 +387,9 @@ void play_file_fast_async(char *filename) {
   exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
   exti_enable_request(EXTI3);
   // generate a software interrupt to get this thing started as there shouldn't be any edges
+  iprintf("Generating software interrupt to start playback\r\n");
   EXTI_SWIER |= EXTI3;
+//   exti3_isr();
 }
 
 void exti3_isr(void) {
@@ -398,6 +400,7 @@ void exti3_isr(void) {
 //   gpio_set(RED_LED_PORT, RED_LED_PIN);
 //   iprintf("fill bytes\r\n");
   while(gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
+//     iprintf("loop\r\n");
     gpio_set(CODEC_PORT, CODEC_CS);
     if(!media_file.near_end) {
       for(i=0;i<32;i++) {
@@ -407,10 +410,11 @@ void exti3_isr(void) {
         gpio_clear(CODEC_PORT, CODEC_CS);
       }
       if(current_track.byte_count == MEDIA_BUFFER_SIZE) {
+//         iprintf("reading\r\n");
         sdfat_read_media();
         current_track.byte_count = 0;
         gpio_clear(CODEC_PORT, CODEC_CS);
-
+//         iprintf("swapping...\r\n");
         /* fetch the value of current decode position */
         vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_LO);
         for(i=0;i<150;i++) {__asm__("nop\n\t");}
@@ -419,7 +423,7 @@ void exti3_isr(void) {
         vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_HI);
         for(i=0;i<150;i++) {__asm__("nop\n\t");}
         current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
-        
+//         iprintf("swap\r\n");
         gpio_set(CODEC_PORT, CODEC_CS);
       }
     } else {

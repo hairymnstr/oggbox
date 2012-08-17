@@ -87,17 +87,19 @@ int main(void)
 //         demo_codec();
 //         play_file_fast("/part01~1.ogg");
 //   play_file_fast("/02-THE~1.OGG");
-  len = ogg_track_length_millis("/02-THE~1.OGG");
-  snprintf(progress, 9, "%d", len);
-  lcdPrintPortrait(progress, 8);
-  play_file_fast_async("/02-THE~1.OGG");
+  len = ogg_track_length_millis("/intro.OGG");
+//   snprintf(progress, 9, "%d", len);
+//   lcdPrintPortrait(progress, 8);
+  play_file_fast_async("/intro.OGG");
   lcdPrintPortrait(" Playing", 5);
   while(current_track_playing) {
-    snprintf(progress, 9, "%d%%", (current_track.pos * 100) / len );
-    lcdPrintPortrait(progress, 6);
+    if(((current_track.pos * 100) / len > 0) && ((current_track.pos * 100) / len < 100)) {
+      snprintf(progress, 9, "%d%%", (current_track.pos * 100) / len );
+      lcdPrintPortrait(progress, 6);
+    }
   }
   lcdPrintPortrait("Finished", 5);
-  play_file("/magicc~1.ogg");
+//   play_file("/magicc~1.ogg");
   
   /* Blink the LED (PC12) on the board. */
   while (1) {
