@@ -76,6 +76,13 @@ typedef struct {
   uint32_t  root_cluster;
 } SDCard;
 
+struct dma_job {
+  uint32_t  block;
+  uint32_t  count;
+  char *buffer;
+  uint32_t *flags;
+};
+
 uint8_t sd_init();
 uint8_t sd_card_reset();
 //u16 spi_rw(u32, u16);

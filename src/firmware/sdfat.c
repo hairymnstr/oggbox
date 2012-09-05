@@ -796,7 +796,7 @@ char *sdfat_read_media() {
   media_file.active_buffer ^= 1; // (media_file.active_buffer + 1) % 2;
 //  iprintf("sdfat_read_media - exit\n\n");
   /* check that the data we're returning is ready */
-  while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\r");}
+//   while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\r");}
   return media_file.buffer[media_file.active_buffer];
 }
 

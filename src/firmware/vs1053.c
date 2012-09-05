@@ -373,7 +373,6 @@ void play_file_fast_async(char *filename) {
 //  vs1053_SCI_write(SCI_CLOCKF, 0xA000);
 //  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
 
-  sdfat_open_media(filename);
 
   current_track.byte_count = 0;
   current_track_playing = 1;
@@ -387,20 +386,23 @@ void play_file_fast_async(char *filename) {
   exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
   exti_enable_request(EXTI3);
   // generate a software interrupt to get this thing started as there shouldn't be any edges
-  iprintf("Generating software interrupt to start playback\r\n");
-  EXTI_SWIER |= EXTI3;
+  sdfat_open_media(filename);
+//   iprintf("Generating software interrupt to start playback\r\n");
+//   EXTI_SWIER |= EXTI3;
 //   exti3_isr();
 }
 
 void exti3_isr(void) {
   int i, j;
   uint16_t endFillByte;
-  exti_reset_request(EXTI3);
   gpio_set(GREEN_LED_PORT, GREEN_LED_PIN);
 //   gpio_set(RED_LED_PORT, RED_LED_PIN);
 //   iprintf("fill bytes\r\n");
+  iprintf("exti3_isr\r\n");
+  if(media_file.buffer_ready[media_file.active_buffer] == 0) {
+    iprintf("Buffer %d was ready...\r\n", media_file.active_buffer);
   while(gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
-//     iprintf("loop\r\n");
+    iprintf("loop\r\n");
     gpio_set(CODEC_PORT, CODEC_CS);
     if(!media_file.near_end) {
       for(i=0;i<32;i++) {
@@ -425,6 +427,10 @@ void exti3_isr(void) {
         current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
 //         iprintf("swap\r\n");
         gpio_set(CODEC_PORT, CODEC_CS);
+        if(media_file.buffer_ready[media_file.active_buffer]) {
+          iprintf("Breaking out\r\n");
+          break;
+        }
       }
     } else {
       for(i=0;i<32;i++) {
@@ -483,6 +489,8 @@ void exti3_isr(void) {
       }
     }
   }
+  }
+  exti_reset_request(EXTI3);
 
   gpio_clear(GREEN_LED_PORT, GREEN_LED_PIN);
 }
