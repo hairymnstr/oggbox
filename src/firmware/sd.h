@@ -81,6 +81,7 @@ struct dma_job {
   uint32_t  count;
   char *buffer;
   volatile uint32_t *flags;
+  void (*owner)();
 };
 
 uint8_t sd_init();
@@ -89,7 +90,7 @@ uint8_t sd_card_reset();
 //void sd_cid(void);
 //u16 sd_command(u8, u32, u8);
 uint16_t sd_read_block(char *, uint32_t);
-void sd_read_multiblock(char *, uint32_t, uint8_t, volatile uint32_t *);
+void sd_read_multiblock(char *, uint32_t, uint8_t, volatile uint32_t *, void (*)());
 uint8_t sd_find_partition();
 
 #endif

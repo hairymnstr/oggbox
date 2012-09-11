@@ -24,6 +24,7 @@
 #include <libopencm3/stm32/nvic.h>
 #include <libopencm3/stm32/f1/nvic_f1.h>
 
+#include <stdlib.h>
 #include <stdint.h>
 #include "sd.h"
 #include "mbr.h"
@@ -39,6 +40,7 @@ char *garbage = "\xFF";
 volatile uint32_t dma_state;
 struct dma_job jobs[10];
 int dma_job_count;
+void (*dma_owner)();
 
 /**
  *  sd_transfer_byte - internal low level transfer byte function
@@ -253,8 +255,6 @@ uint8_t sd_card_reset() {
 
   /* now run a CSD and get some card details (such as HCSD or not etc.) */
   c = sd_command(CMD9, 0, 1);             /* "send CSD" command */
-  //usart_hex_u8(c);
-  //usart_puts("\n");
   /* got the response to the command, make sure it's 0; no error */
   if(c != 0) {
     card.card_type = SD_CARD_ERROR;
@@ -265,20 +265,6 @@ uint8_t sd_card_reset() {
   do {
     c = sd_read_byte();
   } while(c == 0xFF);
-/*  c = sd_read_byte();
-  usart_hex_u8(c);
-  usart_puts("\n");
-  if(c != 0xFF) {
-    card->card_type = SD_CARD_ERROR;
-    return;
-  }
-  c = sd_read_byte();
-  usart_hex_u8(c);
-  usart_puts("\n");
-  if(c != 0xFE) {
-    card->card_type = SD_CARD_ERROR;
-    return;
-  }*/
 
   /* Now deal with the actual content of the CSD */
   c = sd_read_byte();
@@ -381,7 +367,7 @@ void start_dma_transfer() {
   return;
 }
 
-void sd_setup_dma_transfer(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags) {
+void sd_setup_dma_transfer(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags, void (*owner)()) {
   uint8_t c;
   dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
   dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_LOW);
@@ -417,6 +403,7 @@ void sd_setup_dma_transfer(char *buffer, uint32_t addr, uint8_t num_blocks, vola
   dma_total_blocks = num_blocks;
   dma_state = 1;
   dma_report_done = flags;
+  dma_owner = owner;
   start_dma_transfer();
   return;
 }
@@ -450,18 +437,22 @@ void dma1_channel4_isr() {
     *dma_report_done = 0;
       
     if(dma_job_count > 0) {
-      sd_setup_dma_transfer(jobs[0].buffer, jobs[0].block, jobs[0].count, jobs[0].flags);
+      sd_setup_dma_transfer(jobs[0].buffer, jobs[0].block, jobs[0].count, jobs[0].flags, jobs[0].owner);
       for(i=1;i<dma_job_count;i++) {
         jobs[i-1].buffer = jobs[i].buffer;
         jobs[i-1].block = jobs[i].block;
         jobs[i-1].count = jobs[i].count;
         jobs[i-1].flags = jobs[i].flags;
+        jobs[i-1].owner = jobs[i].owner;
       }
       dma_job_count--;
     } else {
       dma_state = 0;
     }
-    nvic_generate_software_interrupt(NVIC_EXTI3_IRQ);
+    if(dma_owner != NULL) {
+      (*dma_owner)();
+    }
+//     nvic_generate_software_interrupt(NVIC_EXTI3_IRQ);
   }
 }
 
@@ -469,16 +460,17 @@ void dma1_channel4_isr() {
  *  sd_read_multiblock - use the multi block transfer and internal DMA
  *                       to fetch multiple 512 byte blocks at once
  **/
-void sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags) {
+void sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags, void (*owner)()) {
 
   /* block until previous transfer finishes if there's one going on */
   if(dma_state) {
     jobs[dma_job_count].block = addr;
     jobs[dma_job_count].count = num_blocks;
     jobs[dma_job_count].buffer = buffer;
-    jobs[dma_job_count++].flags = flags;
+    jobs[dma_job_count].flags = flags;
+    jobs[dma_job_count++].owner = owner;
   } else {
-    sd_setup_dma_transfer(buffer, addr, num_blocks, flags);
+    sd_setup_dma_transfer(buffer, addr, num_blocks, flags, owner);
   }
   return;
 }

@@ -17,6 +17,8 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <libopencm3/stm32/nvic.h>
+
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
@@ -38,6 +40,10 @@ uint32_t available_files;
 volatile MediaFileS media_file;
 
 extern int errno;
+
+void media_serv() {
+  nvic_generate_software_interrupt(NVIC_EXTI3_IRQ);
+}
 
 /**
  * low level FAT access routines
@@ -697,11 +703,11 @@ char *sdfat_open_media(char *filename) {
   media_file.block = media_file.cluster * card.sectors_per_cluster + card.cluster0;
   /* ought to check cluster size here !! */
   media_file.buffer_ready[0] = 1;
-  sd_read_multiblock(media_file.buffer[0], media_file.block, 4, &media_file.buffer_ready[0]);
+  sd_read_multiblock(media_file.buffer[0], media_file.block, 4, &media_file.buffer_ready[0], &media_serv);
   media_file.block += 4;
   media_file.block_count += 4;
   media_file.buffer_ready[1] = 1;
-  sd_read_multiblock(media_file.buffer[1], media_file.block, 4, &media_file.buffer_ready[1]);
+  sd_read_multiblock(media_file.buffer[1], media_file.block, 4, &media_file.buffer_ready[1], &media_serv);
   /* don't need the fd we used to open the file with now */
   sdfat_close(fn);
 //   iprintf("media_file.cluster = %d\r\n", media_file.cluster);
@@ -777,7 +783,7 @@ char *sdfat_read_media() {
       media_file.block = card.cluster0 + media_file.cluster * card.sectors_per_cluster;
     }
     media_file.buffer_ready[media_file.active_buffer] = 1;
-    sd_read_multiblock(media_file.buffer[media_file.active_buffer], media_file.block, 4, &media_file.buffer_ready[media_file.active_buffer]);
+    sd_read_multiblock(media_file.buffer[media_file.active_buffer], media_file.block, 4, &media_file.buffer_ready[media_file.active_buffer], &media_serv);
   } else {
     media_file.near_end = 1;
   }
