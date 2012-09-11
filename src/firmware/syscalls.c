@@ -47,6 +47,12 @@ void _exit (int n) {
 }
 
 int _stat(char *file, struct stat *st) {
+  int i;
+  i = sdfat_open(file, O_RDONLY);
+  if(i < 1)
+    return -1;
+  sdfat_stat(i, st);
+  sdfat_close(i);
   return (0);
 }
 
@@ -91,8 +97,9 @@ caddr_t _sbrk_r(void *reent, size_t incr) {
 }
 
 int _isatty(int fd) {
-  write_std_out("_isatty\r\n", 8);
-  return(1);      // not implemented
+  if((fd == STDOUT_FILENO) || (fd == STDIN_FILENO) || (fd == STDERR_FILENO))
+    return 1;
+  return 0;
 }
 
 int _lseek(int fd, int ptr, int dir) {

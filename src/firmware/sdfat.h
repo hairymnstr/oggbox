@@ -149,6 +149,7 @@ int sdfat_init();
 int sdfat_mount();
 int sdfat_lookup_path(int, const char *);
 int sdfat_open(const char *, int);
+int sdfat_close(int);
 int sdfat_read(int, void *, int);
 int sdfat_lseek(int, int, int);
 int sdfat_get_next_dirent(int, struct dirent *);
