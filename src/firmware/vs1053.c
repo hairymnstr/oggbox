@@ -381,6 +381,7 @@ void play_file_fast_async(char *filename) {
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
   
   nvic_enable_irq(NVIC_EXTI3_IRQ);
+  nvic_set_priority(NVIC_EXTI3_IRQ, 16);
   
   exti_select_source(EXTI3, CODEC_DREQ_PORT);
   exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
@@ -403,7 +404,7 @@ void exti3_isr(void) {
   if(media_file.buffer_ready[media_file.active_buffer] == 0) {
     iprintf("Buffer %d was ready...\r\n", media_file.active_buffer);
   while(gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
-    iprintf("loop\r\n");
+//     iprintf("loop\r\n");
     gpio_set(CODEC_PORT, CODEC_CS);
     if(!media_file.near_end) {
       for(i=0;i<32;i++) {
