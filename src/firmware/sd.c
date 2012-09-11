@@ -523,6 +523,7 @@ void start_dma_transfer() {
 
 void sd_setup_dma_transfer(char *buffer, uint32_t addr, uint8_t num_blocks, unsigned int *flags) {
   uint8_t c;
+  iprintf("setup dma %p %u %u %p\r\n", buffer, addr, num_blocks, flags);
   dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
   dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_LOW);
   dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
@@ -583,12 +584,13 @@ void dma1_channel4_isr() {
     start_dma_transfer();
   } else {
     /* mark dma transfer done */
-    dma_state = 0;
-    *dma_report_done = 0;
+    
 //    iprintf("%x\n", sd_read_byte());               /* dump the two checksum bytes */
 //    iprintf("%x\n", sd_read_byte());
     c = sd_command(CMD12, 0, 1);    /* end multiblock mode */
     
+    *dma_report_done = 0;
+      
     if(dma_job_count > 0) {
       sd_setup_dma_transfer(jobs[0].buffer, jobs[0].block, jobs[0].count, jobs[0].flags);
       for(i=1;i<dma_job_count;i++) {
@@ -598,8 +600,11 @@ void dma1_channel4_isr() {
         jobs[i-1].flags = jobs[i].flags;
       }
       dma_job_count--;
+      iprintf("sub job\r\n");
+    } else {
+      dma_state = 0;
     }
-    exti3_isr();
+    nvic_generate_software_interrupt(NVIC_EXTI3_IRQ);
   }
 }
 
@@ -615,6 +620,7 @@ uint16_t sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, uns
     jobs[dma_job_count].count = num_blocks;
     jobs[dma_job_count].buffer = buffer;
     jobs[dma_job_count++].flags = flags;
+    iprintf("Add job %d\r\n", addr);
   } else {
     sd_setup_dma_transfer(buffer, addr, num_blocks, flags);
   }

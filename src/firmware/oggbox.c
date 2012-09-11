@@ -87,10 +87,10 @@ int main(void)
 //         demo_codec();
 //         play_file_fast("/part01~1.ogg");
 //   play_file_fast("/02-THE~1.OGG");
-  len = ogg_track_length_millis("/outro.OGG");
+  len = ogg_track_length_millis("/intro.OGG");
 //   snprintf(progress, 9, "%d", len);
 //   lcdPrintPortrait(progress, 8);
-  play_file_fast_async("/outro.OGG");
+  play_file_fast_async("/intro.OGG");
   lcdPrintPortrait(" Playing", 5);
   while(current_track_playing) {
     if(((current_track.pos * 100) / len > 0) && ((current_track.pos * 100) / len < 100)) {

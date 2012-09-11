@@ -716,18 +716,18 @@ char *sdfat_open_media(char *filename) {
   sd_read_multiblock(media_file.buffer[1], media_file.block, 4, &media_file.buffer_ready[1]);
   /* don't need the fd we used to open the file with now */
   sdfat_close(fn);
-  iprintf("media_file.cluster = %d\r\n", media_file.cluster);
-  iprintf("sdfat_open_media - exit\r\n");
-  int i, j;
-  for(i=0;i<16;i++) {
-    for(j=0;j<32;j++) {
-      iprintf("%02X ", media_file.buffer[0][i*32 + j]);
-    }
-    for(j=0;j<32;j++) {
-      iprintf("%c", media_file.buffer[0][i*32 + j]);
-    }
-    iprintf("\r\n");
-  }
+//   iprintf("media_file.cluster = %d\r\n", media_file.cluster);
+//   iprintf("sdfat_open_media - exit\r\n");
+//   int i, j;
+//   for(i=0;i<16;i++) {
+//     for(j=0;j<32;j++) {
+//       iprintf("%02X ", media_file.buffer[0][i*32 + j]);
+//     }
+//     for(j=0;j<32;j++) {
+//       iprintf("%c", media_file.buffer[0][i*32 + j]);
+//     }
+//     iprintf("\r\n");
+//   }
   //while(1) {;}
   return media_file.buffer[0];
 }

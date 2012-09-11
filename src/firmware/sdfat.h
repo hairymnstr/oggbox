@@ -153,5 +153,8 @@ int sdfat_read(int, void *, int);
 int sdfat_lseek(int, int, int);
 int sdfat_get_next_dirent(int, struct dirent *);
 int sdfat_stat(int fd, struct stat *st);
+
+char *sdfat_open_media(char *);
+
 #endif
 

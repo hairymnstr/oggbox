@@ -398,6 +398,7 @@ void exti3_isr(void) {
   gpio_set(GREEN_LED_PORT, GREEN_LED_PIN);
 //   gpio_set(RED_LED_PORT, RED_LED_PIN);
 //   iprintf("fill bytes\r\n");
+  exti_reset_request(EXTI3);
   iprintf("exti3_isr\r\n");
   if(media_file.buffer_ready[media_file.active_buffer] == 0) {
     iprintf("Buffer %d was ready...\r\n", media_file.active_buffer);
@@ -490,7 +491,6 @@ void exti3_isr(void) {
     }
   }
   }
-  exti_reset_request(EXTI3);
 
   gpio_clear(GREEN_LED_PORT, GREEN_LED_PIN);
 }
