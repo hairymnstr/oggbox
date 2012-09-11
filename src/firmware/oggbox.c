@@ -19,7 +19,7 @@
 
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
-
+#include <libopencm3/stm32/f1/rtc.h>
 #include <stdio.h>
 
 #include "dirent.h"
@@ -94,7 +94,7 @@ int main(void)
   lcdPrintPortrait(" Playing", 5);
   while(current_track_playing) {
     if(((current_track.pos * 100) / len > 0) && ((current_track.pos * 100) / len < 100)) {
-      snprintf(progress, 9, "%d%%", (current_track.pos * 100) / len );
+      snprintf(progress, 9, "%ld%%", (current_track.pos * 100) / len );
       lcdPrintPortrait(progress, 6);
     }
   }

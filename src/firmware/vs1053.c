@@ -354,7 +354,7 @@ void play_file_fast(char *filename) {
 }
 
 void play_file_fast_async(char *filename) {
-  int i, j=0, k; //l, fn;
+  //int i, j=0, k; //l, fn;
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   vs1053_SCI_write(0x00, 0xc00);
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}

@@ -76,7 +76,7 @@ void lcdData(unsigned char d) {
   gpio_set_mode(LCD_DATA_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, LCD_DATA_MASK);
 }
 
-volatile unsigned char lcdStatus() {
+unsigned char lcdStatus() {
   unsigned char rv;
   int i;
   gpio_set(LCD_RW_PORT, LCD_RW_PIN);

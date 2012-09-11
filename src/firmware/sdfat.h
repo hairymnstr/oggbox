@@ -138,7 +138,7 @@ typedef struct {
   int  block;
   int  block_count;
   int  error;
-  unsigned int buffer_ready[2];
+  uint32_t buffer_ready[2];
   unsigned char near_end;
   unsigned char nearly_near_end;
   int  file_end;
@@ -154,7 +154,10 @@ int sdfat_lseek(int, int, int);
 int sdfat_get_next_dirent(int, struct dirent *);
 int sdfat_stat(int fd, struct stat *st);
 
+int sdfat_next_sector(int fd);
+
 char *sdfat_open_media(char *);
+char *sdfat_read_media();
 
 #endif
 

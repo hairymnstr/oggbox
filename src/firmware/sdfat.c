@@ -316,10 +316,10 @@ int sdfat_next_cluster(int fd) {
   }
   if(j < 2) {
     file_num[fd].error = FAT_ERROR_CLUSTER;
-    iprintf("ERROR CLUSTER %08X\n", j);
+    iprintf("ERROR CLUSTER %08X\n", (unsigned int)j);
     return -1;
   } else if(j >= card.end_cluster_marker) {
-    iprintf("END OF FILE %08X\n", j);
+    iprintf("END OF FILE %08X\n", (unsigned int)j);
     file_num[fd].error = FAT_END_OF_FILE;
     return -1;
   }
@@ -427,20 +427,20 @@ int sdfat_close(int fn) {
 
 int sdfat_lookup_path(int fd, const char *path) {
   char dosname[12];
-  char *cp = (char *)path;
-  char c;
+//   char *cp = (char *)path;
+//   char c;
   char isdir;
   int i;
   int path_pointer = 0;
   direntS *de;
-  iprintf("sdfat_lookup_path\r\n");
+//   iprintf("sdfat_lookup_path\r\n");
 
   if(path[0] != '/') {
     return -2;                                /* bad path, we have no cwd */
   }
 
   /* select root directory */
-  iprintf("selecting card root dir on cluster %d\r\n", card.root_cluster);
+//   iprintf("selecting card root dir on cluster %d\r\n", card.root_cluster);
   sdfat_select_cluster(fd, card.root_cluster);
 
   path_pointer++;
@@ -561,18 +561,12 @@ int sdfat_read(int fd, void *buffer, int count) {
 }
 
 int sdfat_lseek(int fd, int ptr, int dir) {
-  int new_pos;
-  int old_pos;
+  unsigned int new_pos;
+  unsigned int old_pos;
   int new_sec;
   int i;
   int file_cluster;
-//   if(dir == SEEK_CUR) {
-//     iprintf("sdfat_seek %d, %d, SEEK_CUR\r\n", fd, ptr);
-//   } else if(dir == SEEK_SET) {
-//     iprintf("sdfat_seek %d, %d, SEEK_SET\r\n", fd, ptr);
-//   } else if(dir == SEEK_END) {
-//     iprintf("sdfat_seek %d, %d, SEEK_END\r\n", fd, ptr);
-//   }
+
   if(!(available_files & (1 << fd))) {
     return ptr-1;    /* tried to seek on a file that's not open */
   }
@@ -588,19 +582,16 @@ int sdfat_lseek(int fd, int ptr, int dir) {
   } else {
     new_pos = file_num[fd].size + ptr;
   }
-  if((new_pos < 0) || (new_pos > file_num[fd].size)) {
-//     iprintf("Seek too far\r\n");
+  if(new_pos > file_num[fd].size) {
     return ptr-1; /* tried to seek outside a file */
   }
   // optimisation cases
   if((old_pos/512) == (new_pos/512)) {
     // case 1: seeking within a disk block
-//     iprintf("seek opt 1\r\n");
     file_num[fd].cursor = new_pos & 0x1ff;
     return new_pos;
   } else if((new_pos / (card.sectors_per_cluster * 512)) == (old_pos / (card.sectors_per_cluster * 512))) {
     // case 2: seeking within the cluster, just need to hope forward/back some sectors
-//     iprintf("seek opt 2\r\n");
     file_num[fd].file_sector = new_pos / 512;
     file_num[fd].sector = file_num[fd].sector + (new_pos/512) - (old_pos/512);
     file_num[fd].sectors_left = file_num[fd].sectors_left + (new_pos/512) - (old_pos/512);
@@ -610,7 +601,6 @@ int sdfat_lseek(int fd, int ptr, int dir) {
     }
     return new_pos;
   }
-//   iprintf("seek opt 3\r\n");
   // otherwise we need to seek the cluster chain
   file_cluster = new_pos / (card.sectors_per_cluster * 512);
   
@@ -628,10 +618,8 @@ int sdfat_lseek(int fd, int ptr, int dir) {
   file_num[fd].sector = file_num[fd].cluster * card.sectors_per_cluster + card.cluster0 + new_sec;
   file_num[fd].sectors_left = card.sectors_per_cluster - new_sec - 1;
   if(sd_read_block(file_num[fd].buffer, file_num[fd].sector)) {
-//     iprintf("Can't read the block :(\r\n");
     return ptr-1;
   }
-//   iprintf("Seek worked returning %d\r\n", new_pos);
   return new_pos;
 }
 

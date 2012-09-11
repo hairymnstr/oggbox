@@ -40,7 +40,7 @@
 
 void lcdCommand(unsigned char);
 void lcdData(unsigned char);
-volatile unsigned char lcdStatus();
+unsigned char lcdStatus();
 void lcdInit();
 void lcdClear();
 void lcdBacklight(unsigned short);

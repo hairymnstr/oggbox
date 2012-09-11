@@ -38,7 +38,7 @@
 #define SD_CARD_MMC   1    /* MMC card */
 #define SD_CARD_SC    2    /* Standard capacity SD card (up to 2GB)*/
 #define SD_CARD_HC    3    /* High capacity SD card (4GB to 32GB)*/
-#define SD_CARD_XC    4    /* eXtended Capacity SD card (up to 2TB  - Untested may work if FAT32 */
+#define SD_CARD_XC    4    /* eXtended Capacity SD card (up to 2TB  - Untested may work if FAT32) */
 #define SD_CARD_ERROR 99   /* An error occured during setup */
 
 /* SPI commands */
@@ -80,7 +80,7 @@ struct dma_job {
   uint32_t  block;
   uint32_t  count;
   char *buffer;
-  uint32_t *flags;
+  volatile uint32_t *flags;
 };
 
 uint8_t sd_init();
@@ -89,7 +89,7 @@ uint8_t sd_card_reset();
 //void sd_cid(void);
 //u16 sd_command(u8, u32, u8);
 uint16_t sd_read_block(char *, uint32_t);
-uint16_t sd_read_multiblock(char *, uint32_t, uint8_t, unsigned int *);
+void sd_read_multiblock(char *, uint32_t, uint8_t, volatile uint32_t *);
 uint8_t sd_find_partition();
 
 #endif
