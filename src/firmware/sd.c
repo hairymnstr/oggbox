@@ -549,9 +549,9 @@ void dma1_channel4_isr() {
  *  sd_read_multiblock - use the multi block transfer and internal DMA
  *                       to fetch multiple 512 byte blocks at once
  **/
-uint16_t sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, unsigned int *flags) {
+void sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags) {
   int i, j;
-  uint16_t c;
+//   uint16_t c;
 
   /* block until previous transfer finishes if there's one going on */
 //   iprintf("sd_read_multiblock_entry\r\n");
@@ -594,10 +594,10 @@ uint16_t sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, uns
     addr <<= 9;
   }
 
-  c = sd_command(CMD18, addr, 1); /* start multiblock mode */
-
-  if(c != 0) {
-    return c;
+  if(sd_command(CMD18, addr, 1) != 0) { /* start multiblock mode */
+    return;
+//   if(c != 0) {
+    return;
   }
 
   dma_buffer_addr = buffer;
