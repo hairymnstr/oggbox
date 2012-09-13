@@ -389,7 +389,7 @@ void play_file_fast_async(char *filename) {
   // generate a software interrupt to get this thing started as there shouldn't be any edges
   sdfat_open_media(filename);
 //   iprintf("Generating software interrupt to start playback\r\n");
-//   EXTI_SWIER |= EXTI3;
+  EXTI_SWIER |= EXTI3;
 //   exti3_isr();
 }
 
@@ -429,10 +429,10 @@ void exti3_isr(void) {
         current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
 //         iprintf("swap\r\n");
         gpio_set(CODEC_PORT, CODEC_CS);
-        if(media_file.buffer_ready[media_file.active_buffer]) {
-          iprintf("Breaking out\r\n");
-          break;
-        }
+        while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\t");}
+//           iprintf("Breaking out\r\n");
+//           break;
+//         }
       }
     } else {
       for(i=0;i<32;i++) {

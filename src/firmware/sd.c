@@ -24,7 +24,6 @@
 #include <libopencm3/stm32/nvic.h>
 #include <libopencm3/stm32/f1/nvic_f1.h>
 
-#include <stdlib.h>
 #include <stdint.h>
 #include "sd.h"
 #include "mbr.h"
@@ -35,12 +34,9 @@ extern SDCard card;
 char *dma_buffer_addr;
 int dma_block_no;
 int dma_total_blocks;
-volatile uint32_t *dma_report_done;
+unsigned int *dma_report_done;
 char *garbage = "\xFF";
-volatile uint32_t dma_state;
-struct dma_job jobs[10];
-int dma_job_count;
-void (*dma_owner)();
+volatile int dma_state;
 
 /**
  *  sd_transfer_byte - internal low level transfer byte function
@@ -157,9 +153,6 @@ uint8_t sd_init() {
   gpio_set_mode(SD_CP_PORT, GPIO_MODE_INPUT,
                 GPIO_CNF_INPUT_FLOAT, SD_CP);
 #endif
-  
-  /* initialise the job queue for keeping track of DMA jobs */
-  dma_job_count = 0;
 
   /* configure the SPI peripheral */
   spi_set_unidirectional_mode(SD_SPI); /* we want to send only */
@@ -255,6 +248,8 @@ uint8_t sd_card_reset() {
 
   /* now run a CSD and get some card details (such as HCSD or not etc.) */
   c = sd_command(CMD9, 0, 1);             /* "send CSD" command */
+  //usart_hex_u8(c);
+  //usart_puts("\n");
   /* got the response to the command, make sure it's 0; no error */
   if(c != 0) {
     card.card_type = SD_CARD_ERROR;
@@ -265,6 +260,20 @@ uint8_t sd_card_reset() {
   do {
     c = sd_read_byte();
   } while(c == 0xFF);
+/*  c = sd_read_byte();
+  usart_hex_u8(c);
+  usart_puts("\n");
+  if(c != 0xFF) {
+    card->card_type = SD_CARD_ERROR;
+    return;
+  }
+  c = sd_read_byte();
+  usart_hex_u8(c);
+  usart_puts("\n");
+  if(c != 0xFE) {
+    card->card_type = SD_CARD_ERROR;
+    return;
+  }*/
 
   /* Now deal with the actual content of the CSD */
   c = sd_read_byte();
@@ -350,6 +359,146 @@ uint16_t sd_read_block(char *buffer, uint32_t addr) {
   return 0;
 }
 
+/**
+ *  sd_read_multiblock - use the multi block transfer and internal DMA
+ *                       to fetch multiple 512 byte blocks at once
+ **/
+uint16_t sd_read_multiblock2(char *buffer, u32 addr, u8 num_blocks) {
+  int i, j;
+  u16 c;
+  if(card.card_type == SD_CARD_SC) {
+    addr <<= 9;
+  }
+
+  c = sd_command(CMD18, addr, 1); /* start multiblock mode */
+
+  if(c != 0) {
+    return 18;
+  }
+
+  for(j=0;j<num_blocks;j++) {     /* loop over number of blocks */
+    do {
+      c = sd_read_byte();         /* wait for a data token */
+    } while(c != 0xFE);
+
+    for(i=0;i<512;i++) {          /* read the actual data */
+      buffer[j*512+i] = sd_read_byte();
+    }
+   sd_read_byte();               /* dump the two checksum bytes */
+   sd_read_byte();
+//     iprintf("%x\n", sd_read_byte());
+//     iprintf("%x\n", sd_read_byte());
+  }
+  c = sd_command(CMD12, 0, 1);    /* end multiblock mode */
+  return c;
+}
+
+/**
+ *  sd_read_multiblock - use the multi block transfer and internal DMA
+ *                       to fetch multiple 512 byte blocks at once
+ **/
+uint16_t sd_read_multiblock3(char *buffer, u32 addr, u8 num_blocks) {
+  int i, j;
+  uint16_t c;
+  char *garbage = "\xFF";
+
+  dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
+  dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_LOW);
+  dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
+  dma_set_memory_size(DMA1, DMA_CHANNEL5, DMA_CCR_MSIZE_8BIT);
+  dma_set_peripheral_size(DMA1, DMA_CHANNEL4, DMA_CCR_PSIZE_8BIT);
+  dma_set_peripheral_size(DMA1, DMA_CHANNEL5, DMA_CCR_PSIZE_8BIT);
+
+  /* setup dma */
+  dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL4);
+//  dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL5);
+  DMA_CCR(DMA1, 5) &= ~ DMA_CCR_MINC;
+//  dma_disable_peripheral_increment_mode(DMA1, DMA_CHANNEL4);
+
+  dma_set_read_from_peripheral(DMA1, DMA_CHANNEL4);
+  dma_set_read_from_memory(DMA1, DMA_CHANNEL5);
+  dma_set_peripheral_address(DMA1, DMA_CHANNEL4, (u32)&SPI_DR(SD_SPI));
+  dma_set_peripheral_address(DMA1, DMA_CHANNEL5, (u32)&SPI_DR(SD_SPI));
+
+//  iprintf("garbage = %p\n", garbage);
+//  iprintf("CMAR5 = %d\n", DMA_CMAR5(DMA1));
+//  dma_set_memory_address(DMA1, DMA_CHANNEL4, (u32)buffer);
+//  dma_set_memory_address(DMA1, DMA_CHANNEL5, (u32)garbage);
+//  dma_enable_channel(DMA1, DMA_CHANNEL5);
+//  spi_enable_rx_dma(SD_SPI);
+//  spi_enable_tx_dma(SD_SPI);
+
+//  iprintf("DMA_CCR4 %08X\n", DMA_CCR4(DMA1));
+//  iprintf("DMA_CNDTR4 %08X\n", DMA_CNDTR4(DMA1));
+
+  if(card.card_type == SD_CARD_SC) {
+    addr <<= 9;
+  }
+
+  c = sd_command(CMD18, addr, 1); /* start multiblock mode */
+
+  if(c != 0) {
+    return 18;
+  }
+
+  for(j=0;j<num_blocks;j++) {     /* loop over number of blocks */
+    do {
+      c = sd_read_byte();         /* wait for a data token */
+    } while(c != 0xFE);
+
+//    iprintf("SPI_SR = %08X\n", SPI_SR(SD_SPI));
+//    DMA_CNDTR4(DMA1) = 512;
+    dma_set_number_of_data(DMA1, DMA_CHANNEL4, 512);
+    dma_set_memory_address(DMA1, DMA_CHANNEL4, (u32)(buffer + j * 512));
+//    dma_set_number_of_data(DMA1, DMA_CHANNEL4, 512);
+    dma_set_number_of_data(DMA1, DMA_CHANNEL5, 512);
+    dma_set_memory_address(DMA1, DMA_CHANNEL5, (u32)(garbage));
+//    iprintf("starting DMA...\n");
+//    spi_disable(SD_SPI);
+//    spi_set_receive_only_mode(SD_SPI);
+//    spi_enable(SD_SPI);
+//    iprintf("DMA_ISR %08X\n", DMA_ISR(DMA1));
+//    iprintf("DMA_CCR4 %08X\n", DMA_CCR4(DMA1));
+//    iprintf("DMA_CNDTR4 %08X\n", DMA_CNDTR4(DMA1));
+//    iprintf("DMA_CNDTR5 %08X\n", DMA_CNDTR5(DMA1));
+//    iprintf("DMA_CMAR4 %08X\n", DMA_CMAR4(DMA1));
+//    iprintf("DMA_CMAR5 %08X\n", DMA_CMAR5(DMA1));
+    dma_enable_channel(DMA1, DMA_CHANNEL5);
+    dma_enable_channel(DMA1, DMA_CHANNEL4);
+
+    SPI_CR2(SD_SPI) |= (SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN);
+//    spi_set_receive_only_mode(SD_SPI);
+    while(!(DMA_ISR(DMA1) & DMA_ISR_TCIF4)) {;}
+//    iprintf("DMA_ISR(DMA1) = %08X\n", DMA_ISR(DMA1));
+//    spi_set_full_duplex_mode(SD_SPI);
+    DMA_IFCR(DMA1) |= DMA_IFCR_CTCIF4 | DMA_IFCR_CGIF4 | DMA_IFCR_CHTIF4;
+    DMA_IFCR(DMA1) |= DMA_IFCR_CTCIF5 | DMA_IFCR_CGIF5 | DMA_IFCR_CHTIF5;
+    dma_disable_channel(DMA1, DMA_CHANNEL4);
+    dma_disable_channel(DMA1, DMA_CHANNEL5);
+    SPI_CR2(SD_SPI) &= ~(SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN);
+//    iprintf("SPI_SR = %08X\n", SPI_SR(SD_SPI));
+//    spi_disable(SD_SPI);
+//    spi_set_full_duplex_mode(SD_SPI);
+//    spi_enable(SD_SPI);
+//    iprintf("finished DMA\n");
+
+//    for(i=0;i<512;i++) {          /* read the actual data */
+//      buffer[j*512+i] = sd_read_byte();
+//    }
+    sd_read_byte();
+    sd_read_byte();
+//    iprintf("%x\n", sd_read_byte());               /* dump the two checksum bytes */
+//    iprintf("%x\n", sd_read_byte());
+  }
+
+//    dma_disable_channel(DMA1, DMA_CHANNEL4);
+//    spi_disable_rx_dma(SD_SPI);
+//    spi_disable_tx_dma(SD_SPI);
+
+  c = sd_command(CMD12, 0, 1);    /* end multiblock mode */
+  return c;
+}
+
 void start_dma_transfer() {
   uint8_t c;
   do {
@@ -367,49 +516,8 @@ void start_dma_transfer() {
   return;
 }
 
-void sd_setup_dma_transfer(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags, void (*owner)()) {
-  uint8_t c;
-  dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
-  dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_LOW);
-  dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
-  dma_set_memory_size(DMA1, DMA_CHANNEL5, DMA_CCR_MSIZE_8BIT);
-  dma_set_peripheral_size(DMA1, DMA_CHANNEL4, DMA_CCR_PSIZE_8BIT);
-  dma_set_peripheral_size(DMA1, DMA_CHANNEL5, DMA_CCR_PSIZE_8BIT);
-
-  /* setup dma */
-  dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL4);
-  DMA_CCR(DMA1, 5) &= ~ DMA_CCR_MINC;
-
-  dma_set_read_from_peripheral(DMA1, DMA_CHANNEL4);
-  dma_set_read_from_memory(DMA1, DMA_CHANNEL5);
-  dma_set_peripheral_address(DMA1, DMA_CHANNEL4, (u32)&SPI_DR(SD_SPI));
-  dma_set_peripheral_address(DMA1, DMA_CHANNEL5, (u32)&SPI_DR(SD_SPI));
-
-  /* enable the interrupt */
-  dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
-
-  if(card.card_type == SD_CARD_SC) {
-    addr <<= 9;
-  }
-
-  c = sd_command(CMD18, addr, 1); /* start multiblock mode */
-
-  if(c != 0) {
-    return;
-  }
-
-  dma_buffer_addr = buffer;
-  dma_block_no = 0;
-  dma_total_blocks = num_blocks;
-  dma_state = 1;
-  dma_report_done = flags;
-  dma_owner = owner;
-  start_dma_transfer();
-  return;
-}
-
 void dma1_channel4_isr() {
-  int i;
+  uint8_t c;
 
 //   gpio_toggle(GPIOC, GPIO12);
 
@@ -429,30 +537,11 @@ void dma1_channel4_isr() {
     start_dma_transfer();
   } else {
     /* mark dma transfer done */
-    
+    dma_state = 0;
+    *dma_report_done = 0;
 //    iprintf("%x\n", sd_read_byte());               /* dump the two checksum bytes */
 //    iprintf("%x\n", sd_read_byte());
-    sd_command(CMD12, 0, 1);    /* end multiblock mode */
-    
-    *dma_report_done = 0;
-      
-    if(dma_job_count > 0) {
-      sd_setup_dma_transfer(jobs[0].buffer, jobs[0].block, jobs[0].count, jobs[0].flags, jobs[0].owner);
-      for(i=1;i<dma_job_count;i++) {
-        jobs[i-1].buffer = jobs[i].buffer;
-        jobs[i-1].block = jobs[i].block;
-        jobs[i-1].count = jobs[i].count;
-        jobs[i-1].flags = jobs[i].flags;
-        jobs[i-1].owner = jobs[i].owner;
-      }
-      dma_job_count--;
-    } else {
-      dma_state = 0;
-    }
-    if(dma_owner != NULL) {
-      (*dma_owner)();
-    }
-//     nvic_generate_software_interrupt(NVIC_EXTI3_IRQ);
+    c = sd_command(CMD12, 0, 1);    /* end multiblock mode */
   }
 }
 
@@ -460,18 +549,71 @@ void dma1_channel4_isr() {
  *  sd_read_multiblock - use the multi block transfer and internal DMA
  *                       to fetch multiple 512 byte blocks at once
  **/
-void sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, volatile uint32_t *flags, void (*owner)()) {
+uint16_t sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, unsigned int *flags) {
+  int i, j;
+  uint16_t c;
 
   /* block until previous transfer finishes if there's one going on */
-  if(dma_state) {
-    jobs[dma_job_count].block = addr;
-    jobs[dma_job_count].count = num_blocks;
-    jobs[dma_job_count].buffer = buffer;
-    jobs[dma_job_count].flags = flags;
-    jobs[dma_job_count++].owner = owner;
-  } else {
-    sd_setup_dma_transfer(buffer, addr, num_blocks, flags, owner);
+//   iprintf("sd_read_multiblock_entry\r\n");
+  while(dma_state) {__asm__("nop\n\t");}
+//   iprintf("DMA wait done\r\n");
+
+  dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
+  dma_set_priority(DMA1, DMA_CHANNEL5, DMA_CCR_PL_LOW);
+  dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
+  dma_set_memory_size(DMA1, DMA_CHANNEL5, DMA_CCR_MSIZE_8BIT);
+  dma_set_peripheral_size(DMA1, DMA_CHANNEL4, DMA_CCR_PSIZE_8BIT);
+  dma_set_peripheral_size(DMA1, DMA_CHANNEL5, DMA_CCR_PSIZE_8BIT);
+
+  /* setup dma */
+  dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL4);
+//  dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL5);
+  DMA_CCR(DMA1, 5) &= ~ DMA_CCR_MINC;
+//  dma_disable_peripheral_increment_mode(DMA1, DMA_CHANNEL4);
+
+  dma_set_read_from_peripheral(DMA1, DMA_CHANNEL4);
+  dma_set_read_from_memory(DMA1, DMA_CHANNEL5);
+  dma_set_peripheral_address(DMA1, DMA_CHANNEL4, (u32)&SPI_DR(SD_SPI));
+  dma_set_peripheral_address(DMA1, DMA_CHANNEL5, (u32)&SPI_DR(SD_SPI));
+
+  /* enable the interrupt */
+  dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
+
+//  iprintf("garbage = %p\n", garbage);
+//  iprintf("CMAR5 = %d\n", DMA_CMAR5(DMA1));
+//  dma_set_memory_address(DMA1, DMA_CHANNEL4, (u32)buffer);
+//  dma_set_memory_address(DMA1, DMA_CHANNEL5, (u32)garbage);
+//  dma_enable_channel(DMA1, DMA_CHANNEL5);
+//  spi_enable_rx_dma(SD_SPI);
+//  spi_enable_tx_dma(SD_SPI);
+
+//  iprintf("DMA_CCR4 %08X\n", DMA_CCR4(DMA1));
+//  iprintf("DMA_CNDTR4 %08X\n", DMA_CNDTR4(DMA1));
+
+  if(card.card_type == SD_CARD_SC) {
+    addr <<= 9;
   }
+
+  c = sd_command(CMD18, addr, 1); /* start multiblock mode */
+
+  if(c != 0) {
+    return c;
+  }
+
+  dma_buffer_addr = buffer;
+  dma_block_no = 0;
+  dma_total_blocks = num_blocks;
+  dma_state = 1;
+  dma_report_done = flags;
+  //for(j=0;j<num_blocks;j++) {     /* loop over number of blocks */
+  //  dma_block_no = j;
+  start_dma_transfer();
+//   iprintf("done multiblock\r\n");
+//  while(dma_state) {
+//    iprintf("DMA block %d\n", dma_block_no);
+//    while(!(DMA_ISR(DMA1) & DMA_ISR_TCIF4)) {;}
+//    dma_transfer_done();
+//  }
   return;
 }
 
