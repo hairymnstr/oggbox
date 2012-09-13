@@ -724,6 +724,7 @@ char *sdfat_open_media(char *filename) {
 
 int media_get_next_cluster() {
   unsigned int i, j;
+  volatile uint32_t flag;
 //  iprintf("media_get_next_cluster - entry\n");
 //  iprintf("media_file.cluster = %d\n", media_file.cluster);
   i = media_file.cluster;
@@ -731,9 +732,11 @@ int media_get_next_cluster() {
   j = (i / 512) + card.active_fat_start; /* get the sector number we want */
   //iprintf("Reading sector %d of FAT at %d for cluster %d\n", (i / 512), card.active_fat_start + (i / 512), file_num[fd].cluster);
   if(j != media_file.meta_block) {
-    if(sd_read_block(media_file.meta_buffer, j)) {
-      return -1;
-    }
+    flag = 1;
+    sd_read_multiblock(media_file.meta_buffer, j, 1, &flag);
+    while(flag) {__asm__("nop\n\t");}
+//       return -1;
+//     }
     media_file.meta_block = j;
   }
   i = i & 0x1FF;
@@ -786,7 +789,7 @@ char *sdfat_read_media() {
   media_file.active_buffer ^= 1; // (media_file.active_buffer + 1) % 2;
 //  iprintf("sdfat_read_media - exit\n\n");
   /* check that the data we're returning is ready */
-//   while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\r");}
+  while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\r");}
   return media_file.buffer[media_file.active_buffer];
 }
 

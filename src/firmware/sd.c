@@ -595,7 +595,7 @@ void sd_read_multiblock(char *buffer, uint32_t addr, uint8_t num_blocks, volatil
   }
 
   if(sd_command(CMD18, addr, 1) != 0) { /* start multiblock mode */
-    return;
+//     return;
 //   if(c != 0) {
     return;
   }
