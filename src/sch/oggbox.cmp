@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2012-05-21 BZR 3261)-stable date = Sun 23 Sep 2012 12:43:03 BST
+Cmp-Mod V01 Created by CvPcb (2012-05-21 BZR 3261)-stable date = Sun 23 Sep 2012 15:55:37 BST
 
 BeginCmp
 TimeStamp = /4D360B65;
@@ -171,14 +171,14 @@ EndCmp
 BeginCmp
 TimeStamp = /4D35FD0A;
 Reference = C24;
-ValeurCmp = 10p;
+ValeurCmp = 12p;
 IdModule  = SM0805;
 EndCmp
 
 BeginCmp
 TimeStamp = /4D35FD0D;
 Reference = C25;
-ValeurCmp = 10p;
+ValeurCmp = 12p;
 IdModule  = SM0805;
 EndCmp
 
@@ -932,21 +932,21 @@ IdModule  = SM0805;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE8C;
+TimeStamp = /505EF927;
 Reference = SW1;
 ValeurCmp = VOL_UP;
 IdModule  = SW_SKQLLCE012;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D35AE93;
+TimeStamp = /505EF91E;
 Reference = SW2;
 ValeurCmp = VOL_DN;
 IdModule  = SW_SKQLLCE012;
 EndCmp
 
 BeginCmp
-TimeStamp = /4D36058B;
+TimeStamp = /505EF9B9;
 Reference = SW3;
 ValeurCmp = RESET;
 IdModule  = SW_SKQLLCE012;
@@ -1012,7 +1012,7 @@ BeginCmp
 TimeStamp = /4D35FCFD;
 Reference = X2;
 ValeurCmp = 32768Hz;
-IdModule  = CFS206;
+IdModule  = MC306;
 EndCmp
 
 BeginCmp
