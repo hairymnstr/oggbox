@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Sat 22 Sep 2012 20:59:38 BST
+EESchema Schematic File Version 2  date Sun 23 Sep 2012 13:00:29 BST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -36,7 +36,7 @@ $Descr A3 16535 11700
 encoding utf-8
 Sheet 1 1
 Title "OggBox open hardware media player"
-Date "22 sep 2012"
+Date "23 sep 2012"
 Rev "B"
 Comp "nathandumont.com"
 Comment1 ""
@@ -44,8 +44,20 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
-Text Label 10250 10500 1    60   ~ 0
-RBG
+Wire Wire Line
+	8250 2700 8650 2700
+Wire Wire Line
+	8250 2700 8250 2600
+Connection ~ 5500 4050
+Wire Wire Line
+	5500 4050 5500 3950
+Wire Wire Line
+	5500 3950 5600 3950
+Connection ~ 6300 4150
+Wire Wire Line
+	6200 4250 6300 4250
+Wire Wire Line
+	6300 4250 6300 4150
 Wire Wire Line
 	10250 10300 10250 10550
 Connection ~ 13550 7000
@@ -592,8 +604,6 @@ Connection ~ 8350 2700
 Wire Wire Line
 	8350 2600 8350 2800
 Wire Wire Line
-	8350 2700 8650 2700
-Wire Wire Line
 	8650 2700 8650 2450
 Connection ~ 8350 1900
 Wire Wire Line
@@ -703,9 +713,7 @@ Connection ~ 11950 7450
 Wire Wire Line
 	8350 2000 8350 1800
 Wire Wire Line
-	8350 1900 9550 1900
-Wire Wire Line
-	9550 1900 9550 2650
+	9550 2650 9550 1900
 Connection ~ 8650 1900
 Wire Wire Line
 	8350 1300 8350 1200
@@ -1258,6 +1266,51 @@ Wire Wire Line
 	13550 7000 14300 7000
 Wire Wire Line
 	10250 9700 9350 9700
+Wire Wire Line
+	6200 3950 6300 3950
+Wire Wire Line
+	6300 3950 6300 4050
+Connection ~ 6300 4050
+Wire Wire Line
+	5500 4150 5500 4250
+Wire Wire Line
+	5500 4250 5600 4250
+Connection ~ 5500 4150
+Wire Wire Line
+	9550 1900 8250 1900
+Wire Wire Line
+	8250 1900 8250 2000
+$Comp
+L SW_PUSH4 SW3
+U 1 1 505EF9B9
+P 8300 2300
+F 0 "SW3" H 8450 2460 50  0000 C CNN
+F 1 "RESET" H 8300 2170 50  0000 C CNN
+	1    8300 2300
+	0    -1   -1   0   
+$EndComp
+$Comp
+L SW_PUSH4 SW?
+U 1 1 505EF927
+P 5900 4000
+AR Path="/505EF91E" Ref="SW?"  Part="1" 
+AR Path="/505EF927" Ref="SW1"  Part="1" 
+F 0 "SW1" H 5550 4100 50  0000 C CNN
+F 1 "VOL_UP" H 6300 4100 50  0000 C CNN
+	1    5900 4000
+	1    0    0    -1  
+$EndComp
+$Comp
+L SW_PUSH4 SW2
+U 1 1 505EF91E
+P 5900 4200
+F 0 "SW2" H 6050 4360 50  0000 C CNN
+F 1 "VOL_DN" H 5700 4350 50  0000 C CNN
+	1    5900 4200
+	1    0    0    1   
+$EndComp
+Text Label 10250 10500 1    60   ~ 0
+RBG
 $Comp
 L C C?
 U 1 1 50114137
@@ -2200,7 +2253,7 @@ $Comp
 L LED_RG D1
 U 1 1 4F3E5CAC
 P 5700 3650
-F 0 "D1" V 5450 3650 60  0000 C CNN
+F 0 "D1" V 5700 3850 60  0000 C CNN
 F 1 "LED_RG" V 5950 3650 60  0000 C CNN
 F 2 "SOT23" V 6050 3650 60  0001 C CNN
 	1    5700 3650
@@ -3400,17 +3453,6 @@ F 2 "SM0805" V 8450 1550 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L SW_PUSH SW3
-U 1 1 4D36058B
-P 8350 2300
-F 0 "SW3" H 8500 2410 50  0000 C CNN
-F 1 "RESET" H 8350 2220 50  0000 C CNN
-F 2 "SW_B3U-3000P-B" H 8350 2320 50  0001 C CNN
-F 4 "9962859" H 8350 2300 60  0001 C CNN "Farnell"
-	1    8350 2300
-	0    -1   -1   0   
-$EndComp
-$Comp
 L R R?
 U 1 1 4D36040D
 P 11600 7550
@@ -3567,28 +3609,6 @@ P 11450 6900
 F 0 "#PWR081" H 11450 6900 30  0001 C CNN
 F 1 "GND" H 11450 6830 30  0001 C CNN
 	1    11450 6900
-	1    0    0    -1  
-$EndComp
-$Comp
-L SW_PUSH SW2
-U 1 1 4D35AE93
-P 5900 4150
-F 0 "SW2" H 6200 4200 50  0000 C CNN
-F 1 "VOL_DN" H 5500 4200 50  0000 C CNN
-F 2 "SW_B3U-3000P-B" H 5500 4300 50  0001 C CNN
-F 4 "9962859" H 5900 4150 60  0001 C CNN "Farnell"
-	1    5900 4150
-	1    0    0    -1  
-$EndComp
-$Comp
-L SW_PUSH SW1
-U 1 1 4D35AE8C
-P 5900 4050
-F 0 "SW1" H 6200 4100 50  0000 C CNN
-F 1 "VOL_UP" H 5500 4100 50  0000 C CNN
-F 2 "SW_B3U-3000P-B" H 5500 4200 50  0001 C CNN
-F 4 "9962859" H 5900 4050 60  0001 C CNN "Farnell"
-	1    5900 4050
 	1    0    0    -1  
 $EndComp
 $Comp
