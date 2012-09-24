@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2012-05-21 BZR 3261)-stable date = Sun 23 Sep 2012 15:55:37 BST
+Cmp-Mod V01 Created by CvPcb (2012-05-21 BZR 3261)-stable date = Mon 24 Sep 2012 22:07:16 BST
 
 BeginCmp
 TimeStamp = /4D360B65;
@@ -302,13 +302,6 @@ IdModule  = SM0805;
 EndCmp
 
 BeginCmp
-TimeStamp = /4F3E4BD3;
-Reference = C45;
-ValeurCmp = 0.1u;
-IdModule  = SM0805;
-EndCmp
-
-BeginCmp
 TimeStamp = /4D3615AF;
 Reference = C46;
 ValeurCmp = 0.1u;
@@ -403,7 +396,7 @@ BeginCmp
 TimeStamp = /4D35AE2F;
 Reference = IC3;
 ValeurCmp = SD_CARD;
-IdModule  = SD_CARD9186158;
+IdModule  = SD_UNIVERSAL;
 EndCmp
 
 BeginCmp
