@@ -1,34 +1,36 @@
-EESchema Schematic File Version 2  date Sun 23 Sep 2012 15:55:00 BST
-LIBS:power
-LIBS:device
-LIBS:transistors
-LIBS:conn
-LIBS:linear
-LIBS:regul
+EESchema Schematic File Version 2  date Mon 24 Sep 2012 12:49:30 BST
 LIBS:74xx
-LIBS:cmos4000
 LIBS:adc-dac
-LIBS:memory
-LIBS:xilinx
-LIBS:special
-LIBS:microcontrollers
-LIBS:dsp
-LIBS:microchip
 LIBS:analog_switches
-LIBS:motorola
-LIBS:texas
-LIBS:intel
-LIBS:audio
-LIBS:interface
-LIBS:digital-audio
-LIBS:philips
-LIBS:display
-LIBS:cypress
-LIBS:siliconi
-LIBS:opto
 LIBS:atmel
+LIBS:audio
+LIBS:cmos4000
+LIBS:conn
 LIBS:contrib
+LIBS:cypress
+LIBS:dev_boards
+LIBS:device
+LIBS:digital-audio
+LIBS:display
+LIBS:dsp
+LIBS:intel
+LIBS:interface
+LIBS:linear
+LIBS:maxim
+LIBS:memory
+LIBS:microchip
+LIBS:microcontrollers
+LIBS:motorola
+LIBS:parallax
+LIBS:philips
+LIBS:power
+LIBS:regul
+LIBS:siliconi
+LIBS:special
+LIBS:texas
+LIBS:transistors
 LIBS:valves
+LIBS:xilinx
 LIBS:oggbox-cache
 EELAYER 25  0
 EELAYER END
@@ -36,7 +38,7 @@ $Descr A3 16535 11700
 encoding utf-8
 Sheet 1 1
 Title "OggBox open hardware media player"
-Date "23 sep 2012"
+Date "24 sep 2012"
 Rev "B"
 Comp "nathandumont.com"
 Comment1 ""
@@ -44,6 +46,7 @@ Comment2 ""
 Comment3 ""
 Comment4 ""
 $EndDescr
+NoConn ~ 15500 4350
 Wire Wire Line
 	8250 2700 8650 2700
 Wire Wire Line
@@ -89,12 +92,6 @@ Wire Wire Line
 	13900 8200 13900 8300
 Wire Wire Line
 	13050 4550 15500 4550
-Wire Wire Line
-	15500 4350 15250 4350
-Wire Wire Line
-	15250 4350 15250 4050
-Wire Wire Line
-	15250 4050 15000 4050
 Wire Wire Line
 	6500 4900 6500 4800
 Wire Wire Line
@@ -362,8 +359,6 @@ Wire Wire Line
 	4400 3350 4300 3350
 Wire Wire Line
 	4300 3350 4300 3550
-Wire Wire Line
-	14600 4050 14150 4050
 Connection ~ 15400 4850
 Wire Wire Line
 	15400 4950 15400 4750
@@ -2464,18 +2459,6 @@ F 1 "22" V 5000 5800 50  0000 C CNN
 F 2 "SM0805" V 5100 5800 50  0001 C CNN
 	1    5000 5800
 	1    0    0    -1  
-$EndComp
-Text Label 14200 4050 0    60   ~ 0
-RST
-$Comp
-L C C45
-U 1 1 4F3E4BD3
-P 14800 4050
-F 0 "C45" H 14850 4150 50  0000 L CNN
-F 1 "0.1u" H 14850 3950 50  0000 L CNN
-F 2 "SM0805" H 14850 4050 50  0001 C CNN
-	1    14800 4050
-	0    1    1    0   
 $EndComp
 NoConn ~ 15500 4650
 $Comp
