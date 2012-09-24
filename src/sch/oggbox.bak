@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Sun 23 Sep 2012 13:00:38 BST
+EESchema Schematic File Version 2  date Sun 23 Sep 2012 15:55:00 BST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -3577,7 +3577,7 @@ P 7450 1800
 AR Path="/4D35FD0A" Ref="C?"  Part="1" 
 AR Path="/4D35FD0D" Ref="C25"  Part="1" 
 F 0 "C25" H 7500 1900 50  0000 L CNN
-F 1 "10p" H 7500 1700 50  0000 L CNN
+F 1 "12p" H 7500 1700 50  0000 L CNN
 F 2 "SM0805" H 7500 1800 50  0001 C CNN
 	1    7450 1800
 	1    0    0    -1  
@@ -3587,7 +3587,7 @@ L C C24
 U 1 1 4D35FD0A
 P 6950 1800
 F 0 "C24" H 7000 1900 50  0000 L CNN
-F 1 "10p" H 7000 1700 50  0000 L CNN
+F 1 "12p" H 7000 1700 50  0000 L CNN
 F 2 "SM0805" H 7000 1800 50  0001 C CNN
 	1    6950 1800
 	1    0    0    -1  
