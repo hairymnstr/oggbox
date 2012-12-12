@@ -2,7 +2,7 @@ OggBox
 ======
 
 Author: nathan@nathandumont.com
-License: C code GPL V3, schematics CC-BY-SA 3.0
+License: C code LGPL V3, schematics CC-BY-SA 3.0
 
 The OggBox is an open hardware music player.  It supports OggVorbis and WAV files
 using a dedicated codec chip from VLSI.  The source code for the main processor
