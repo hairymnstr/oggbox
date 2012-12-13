@@ -17,12 +17,12 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SDFAT_H
-#define SDFAT_H 1
+#ifndef FAT_H
+#define FAT_H 1
 
 #include <stdint.h>
 #include <sys/stat.h>
-// #include <libopenstm32/common.h>
+#include "block.h"
 #include "dirent.h"
 
 #define MAX_OPEN_FILES 4
@@ -164,6 +164,8 @@ typedef struct {
   unsigned int file_len;
 } MediaFileS;
 
+int fat_mount(blockno_t, uint8_t);
+
 int sdfat_init();
 int sdfat_mount();
 int sdfat_lookup_path(int, const char *);
@@ -180,4 +182,3 @@ char *sdfat_open_media(char *);
 char *sdfat_read_media();
 
 #endif
-

@@ -17,7 +17,7 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <libopencm3/stm32/nvic.h>
+// #include <libopencm3/stm32/nvic.h>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -25,9 +25,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "dirent.h"
-#include "sdfat.h"
+#include "block.h"
+// #include "sdfat.h"
 #include "mbr.h"
-#include "sd.h"
+// #include "sd.h"
 
 /**
  * global variable structures.
@@ -90,6 +91,48 @@ int8_t fat_get_next_file() {
     i <<= 1;
   }
   return -1;
+}
+
+int fat_mount(blockno_t part_start, uint8_t filesystem) {
+  uint8_t buffer[512];
+  boot_sector_fat16 *boot16;
+  boot_sector_fat32 *boot32;
+  
+  block_read(part_start, (void *)buffer);
+  if(filesystem == PART_TYPE_FAT16) {
+    fatfs.fat_entry_len = 2;
+    fatfs.end_cluster_marker = 0xFFF0;
+    boot16 = (boot_sector_fat16 *)buffer;
+    fatfs.sectors_per_cluster = boot16->cluster_size;
+    fatfs.root_len = boot16->root_entries;
+    i = part_start;
+    i += boot16->reserved_sectors;
+    fatfs.active_fat_start = i;
+    i += (boot16->sectors_per_fat * boot16->num_fats);
+    fatfs.root_start = i;
+    i += (boot16->root_entries * 32) / 512;
+    i -= (boot16->cluster_size * 2);
+    fatfs.cluster0 = i;
+    fatfs.root_cluster = 1;
+    fatfs.type = PART_TYPE_FAT16;
+    fatfs.part_start = part_start;
+  } else if(filesystem == PART_TYPE_FAT32) {
+    fatfs.fat_entry_len = 4;
+    fatfs.end_cluster_marker = 0xFFFFFFF0;
+    boot32 = (boot_sector_fat32 *)buffer;
+    fatfs.sectors_per_cluster = boot32->cluster_size;
+    i = part_start;
+    i += boot32->reserved_sectors;
+    fatfs.active_fat_start = i;
+    i += boot32->sectors_per_fat * boot32->num_fats;
+    i -= boot32->cluster_size * 2;
+    fatfs.cluster0 = i;
+    fatfs.root_cluster = boot32->root_start;
+  } else {
+    return -1;
+  }
+  
+  return 0;
 }
 
 uint8_t sd_mount_part() {
