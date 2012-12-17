@@ -5,3 +5,6 @@
 *.srec
 *.elf
 *.d
+filesystem.img
+test_fat
+

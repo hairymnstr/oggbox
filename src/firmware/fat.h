@@ -27,9 +27,9 @@
 
 #define MAX_OPEN_FILES 4
 
-// #define STDIN_FILENO 0  /* standard input file descriptor */
-// #define STDOUT_FILENO 1 /* standard output file descriptor */
-// #define STDERR_FILENO 2 /* standard error file descriptor */
+/* #define STDIN_FILENO 0 */ /* standard input file descriptor */
+/* #define STDOUT_FILENO 1 */ /* standard output file descriptor */
+/* #define STDERR_FILENO 2 */ /* standard error file descriptor */
 #define FIRST_DISC_FILENO 3 /* first real file (on disc) */
 
 #define FAT_ERROR_CLUSTER 1
@@ -44,6 +44,19 @@
 #define FAT_ATT_ARC 0x20
 #define FAT_ATT_DEV 0x40
 
+struct fat_info {
+  uint8_t   read_only;
+  uint8_t   fat_entry_len;
+  uint32_t  end_cluster_marker;
+  uint8_t   sectors_per_cluster;
+  uint32_t  cluster0;
+  uint32_t  active_fat_start;
+  uint32_t  root_len;
+  uint32_t  root_start;
+  uint32_t  root_cluster;
+  uint8_t   type;               // type of filesystem (FAT16 or FAT32)
+  uint8_t   part_start;         // start of partition containing filesystem
+};
 
 typedef struct {
   uint8_t       jump[3];
@@ -144,33 +157,34 @@ typedef struct {
   uint32_t  entry_sector;
   uint8_t   entry_number;
   uint32_t  file_sector;
+  uint32_t  append_mode;
 } __attribute__((__packed__)) FileS;
 
-#define MEDIA_BUFFER_SIZE 2048
-
-typedef struct {
-  char buffer[2][MEDIA_BUFFER_SIZE];
-  char meta_buffer[512];
-  int  meta_block;
-  int  cluster;
-  unsigned char active_buffer;
-  int  block;
-  int  block_count;
-  int  error;
-  uint32_t buffer_ready[2];
-  unsigned char near_end;
-  unsigned char nearly_near_end;
-  int  file_end;
-  unsigned int file_len;
-} MediaFileS;
+// #define MEDIA_BUFFER_SIZE 2048
+// 
+// typedef struct {
+//   char buffer[2][MEDIA_BUFFER_SIZE];
+//   char meta_buffer[512];
+//   int  meta_block;
+//   int  cluster;
+//   unsigned char active_buffer;
+//   int  block;
+//   int  block_count;
+//   int  error;
+//   uint32_t buffer_ready[2];
+//   unsigned char near_end;
+//   unsigned char nearly_near_end;
+//   int  file_end;
+//   unsigned int file_len;
+// } MediaFileS;
 
 int fat_mount(blockno_t, uint8_t);
 
-int sdfat_init();
-int sdfat_mount();
+// int sdfat_init();
+// int sdfat_mount();
 int sdfat_lookup_path(int, const char *);
-int sdfat_open(const char *, int);
-int sdfat_close(int);
+int fat_open(const char *, int);
+int fat_close(int);
 int sdfat_read(int, void *, int);
 int sdfat_lseek(int, int, int);
 int sdfat_get_next_dirent(int, struct dirent *);
@@ -178,7 +192,7 @@ int sdfat_stat(int fd, struct stat *st);
 
 int sdfat_next_sector(int fd);
 
-char *sdfat_open_media(char *);
-char *sdfat_read_media();
+// char *sdfat_open_media(char *);
+// char *sdfat_read_media();
 
 #endif

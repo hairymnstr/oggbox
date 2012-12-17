@@ -23,9 +23,9 @@
 
 #define BLOCK_SIZE 512
 
-// block number type is defined here for portability, if you're expecting to have more than 2TB
-// with a 512 byte block size you need to use 64bit block numbers
-typedef blockno_t uint32_t
+/* block number type is defined here for portability, if you're expecting to have more than 2TB
+   with a 512 byte block size you need to use 64bit block numbers */
+typedef uint32_t blockno_t;
 
 int block_init();
 int block_read(blockno_t, void *);
