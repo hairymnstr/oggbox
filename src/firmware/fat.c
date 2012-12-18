@@ -618,6 +618,16 @@ int fat_open(const char *name, int mode) {
   if(fd < 0) {
     return -EMFILE;   /* too many open files */
   }
+  if((mode & O_RDWR)) {
+    file_num[fd].flags |= (FAT_FLAG_READ | FAT_FLAG_WRITE);
+  } else {
+    if((mode & O_WRONLY) == 0) {
+      file_num[fd].flags |= FAT_FLAG_READ;
+    } else {
+      file_num[fd].flags |= FAT_FLAG_WRITE;
+    }
+  }
+  
   if(mode & O_APPEND) {
     file_num[fd].flags |= FAT_FLAG_APPEND;
   }
