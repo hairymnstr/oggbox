@@ -86,6 +86,8 @@ int test_open(int p) {
   };
   const int cases = 12;
   
+  int rerrno;
+  
   for(i=0;i<cases;i++) {
     printf("[%4d] Testing %s", p++, desc[i]);
     v = fat_open(filename[i], flags[i]);
@@ -95,7 +97,7 @@ int test_open(int p) {
       printf("  [fail]\n  expected (%d) %s\n  got (%d) %s\n", result[i], strerror(-result[i]), v, strerror(-v));
     }
     if(v > -1) {
-      fat_close(v);
+      fat_close(v, &rerrno);
     }
   }
   return p;

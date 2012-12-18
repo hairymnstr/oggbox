@@ -52,6 +52,7 @@ struct fat_info {
   uint8_t   sectors_per_cluster;
   uint32_t  cluster0;
   uint32_t  active_fat_start;
+  uint32_t  sectors_per_fat;
   uint32_t  root_len;
   uint32_t  root_start;
   uint32_t  root_cluster;
@@ -168,11 +169,11 @@ int sdfat_next_sector(int fd);
 
 int fat_mount(blockno_t, uint8_t);
 int fat_open(const char *, int);
-int fat_close(int);
+int fat_close(int, int *);
 int fat_read(int, void *, size_t, int *);
 int fat_write(int, const void *, size_t, int *);
-int sdfat_lseek(int, int, int);
+int fat_fstat(int, struct stat *, int *);
+int fat_lseek(int, int, int, int *);
 int sdfat_get_next_dirent(int, struct dirent *);
-int sdfat_stat(int fd, struct stat *st);
 
 #endif

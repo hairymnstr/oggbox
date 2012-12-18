@@ -103,8 +103,8 @@ int8_t fat_get_next_file() {
   int j;
 
   for(j=0;j<MAX_OPEN_FILES;j++) {
-    if(file_num[fd].flags & FAT_FILE_OPEN) == 0) {
-      file_num[fd].flags = FAT_FILE_OPEN;
+    if((file_num[j].flags & FAT_FLAG_OPEN) == 0) {
+      file_num[j].flags = FAT_FLAG_OPEN;
       return j;
     }
   }
@@ -295,17 +295,59 @@ int fatname_to_str(char *output, char *input) {
 }
 
 /* write a sector back to disc */
-int sdfat_flush(int fd) {
-  /* writing not yet implemented */
-  block_write(file_num[fd].sector, file_num[fd].buffer);
-  /* just clear this flag so this isn't called every time from now on */
-  file_num[fd].dirty = 0;
+int fat_flush(int fd) {
+  /* only write to disk if we need to */
+  if(file_num[fd].flags & FAT_FLAG_DIRTY) {
+    if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
+      /* write failed, don't clear the dirty flag */
+      return -1;
+    }
+    /* just clear this flag so this isn't called every time from now on */
+    file_num[fd].flags &= ~FAT_FLAG_DIRTY;
+  }
   return 0;
 }
 
+int fat_get_free_cluster(int fd) {
+  blockno_t i;
+  int j;
+  uint32_t e;
+  for(i=fatfs.active_fat_start;i<fatfs.active_fat_start + fatfs.sectors_per_fat;i++) {
+    if(block_read(i, file_num[fd].buffer)) {
+      return 0xFFFFFFFF;
+    }
+    for(j=0;j<(512/fatfs.fat_entry_len);j++) {
+      e = file_num[fd].buffer[j*fatfs.fat_entry_len];
+      e += file_num[fd].buffer[j*fatfs.fat_entry_len+1] << 8;
+      if(fatfs.type == PART_TYPE_FAT32) {
+        e += file_num[fd].buffer[j*fatfs.fat_entry_len+2];
+        e += file_num[fd].buffer[j*fatfs.fat_entry_len+3];
+      }
+      if(e == 0) {
+        /* this is a free cluster */
+        /* first, mark it as the end of the chain */
+        if(fatfs.type == PART_TYPE_FAT16) {
+          file_num[fd].buffer[j*fatfs.fat_entry_len] = 0xFF;
+          file_num[fd].buffer[j*fatfs.fat_entry_len+1] = 0x8F;
+        } else {
+          file_num[fd].buffer[j*fatfs.fat_entry_len] = 0xFF;
+          file_num[fd].buffer[j*fatfs.fat_entry_len+1] = 0xFF;
+          file_num[fd].buffer[j*fatfs.fat_entry_len+2] = 0xFF;
+          file_num[fd].buffer[j*fatfs.fat_entry_len+3] = 0x8F;
+        }
+        if(block_write(i, file_num[fd].buffer)) {
+          return 0xFFFFFFFF;
+        }
+        return e;
+      }
+    }
+  }
+  return 0;     /* no clusters found, should raise ENOSPC */
+}
+
 int sdfat_select_sector(int fd, blockno_t sector) {
-  if(file_num[fd].dirty) {
-    sdfat_flush(fd);
+  if(fat_flush(fd)) {
+    return -1;
   }
   file_num[fd].sector = sector;
   file_num[fd].sectors_left = (sector - fatfs.cluster0) % fatfs.sectors_per_cluster;
@@ -326,17 +368,17 @@ int sdfat_select_cluster(int fd, uint32_t cluster) {
 }
 
 /* get the next cluster in the current file */
-int sdfat_next_cluster(int fd) {
+int sdfat_next_cluster(int fd, int *rerrno) {
   uint32_t i;
   uint32_t j;
+  uint32_t k;
 
-  if(file_num[fd].dirty) {
-    sdfat_flush(fd);
+  if(fat_flush(fd)) {
+    return -1;
   }
   i = file_num[fd].cluster;
   i = i * fatfs.fat_entry_len;     /* either 2 bytes for FAT16 or 4 for FAT32 */
   j = (i / 512) + fatfs.active_fat_start; /* get the sector number we want */
-  //iprintf("Reading sector %d of FAT at %d for cluster %d\n", (i / 512), card.active_fat_start + (i / 512), file_num[fd].cluster);
   if(block_read(j, file_num[fd].buffer)) {
     return -1;
   }
@@ -349,12 +391,40 @@ int sdfat_next_cluster(int fd) {
   }
   if(j < 2) {
     file_num[fd].error = FAT_ERROR_CLUSTER;
-//     iprintf("ERROR CLUSTER %08X\n", (unsigned int)j);
     return -1;
   } else if(j >= fatfs.end_cluster_marker) {
-//     iprintf("END OF FILE %08X\n", (unsigned int)j);
-    file_num[fd].error = FAT_END_OF_FILE;
-    return -1;
+    if(file_num[fd].flags & FAT_FLAG_WRITE) {
+      /* opened for writing, we can extend the file */
+      /* find the first available cluster */
+      k = fat_get_free_cluster(fd);
+      if(k == 0) {
+        (*rerrno) = ENOSPC;
+        return -1;
+      }
+      if(k == 0xFFFFFFFF) {
+        (*rerrno) = EIO;
+        return -1;
+      }
+      i = file_num[fd].cluster;
+      i = i * fatfs.fat_entry_len;
+      j = (i/512) + fatfs.active_fat_start;
+      if(block_read(j, file_num[fd].buffer)) {
+        (*rerrno) = EIO;
+        return -1;
+      }
+      /* update the pointer to the new end of chain */
+      memcpy(&file_num[fd].buffer[i & 0x1FF], &k, 4);
+      if(block_write(j, file_num[fd].buffer)) {
+        (*rerrno) = EIO;
+        return -1;
+      }
+      j = k;
+    } else {
+      /* end of the file cluster chain reached */
+      file_num[fd].error = FAT_END_OF_FILE;
+      (*rerrno) = 0;
+      return -1;
+    }
   }
   return j;
 }
@@ -362,9 +432,10 @@ int sdfat_next_cluster(int fd) {
 /* get the next sector in the current file. */
 int sdfat_next_sector(int fd) {
   int c;
+  int rerrno;
   /* if the current sector was written write to disc */
-  if(file_num[fd].dirty) {
-    sdfat_flush(fd);
+  if(fat_flush(fd)) {
+    return -1;
   }
   /* see if we need another cluster */
   if(file_num[fd].sectors_left > 0) {
@@ -373,10 +444,10 @@ int sdfat_next_sector(int fd) {
     file_num[fd].cursor = 0;
     return block_read(++file_num[fd].sector, file_num[fd].buffer);
   } else {
-    c = sdfat_next_cluster(fd);
+    c = sdfat_next_cluster(fd, &rerrno);
     if(c > -1) {
       file_num[fd].file_sector++;
-      return sdfat_select_cluster(fd, sdfat_next_cluster(fd));
+      return sdfat_select_cluster(fd, sdfat_next_cluster(fd, &rerrno));
     } else {
       return -1;
     }
@@ -402,11 +473,26 @@ int fat_flush_fileinfo(int fd) {
   de.first_cluster = file_num[fd].full_first_cluster & 0xffff;
   de.size = file_num[fd].size;
   
-  sdfat_select_sector(fd, file_num[fd].entry_sector);
+  /* make sure the buffer has no changes in it */
+  if(fat_flush(fd)) {
+    return -1;
+  }
+  /* read the directory entry for this file */
+  if(block_read(file_num[fd].entry_sector, file_num[fd].buffer)) {
+    return -1;
+  }
+  /* copy the new entry over the old */
   memcpy(&file_num[fd].buffer[file_num[fd].entry_number * 32], &de, 32);
-  sdfat_flush(fd);
+  /* write the modified directory entry back to disc */
+  if(block_write(file_num[fd].entry_sector, file_num[fd].buffer)) {
+    return -1;
+  }
+  /* fetch the sector that was expected back into the buffer */
+  if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
+    return -1;
+  }
   /* mark the filesystem as consistent now */
-  file_num[fd].fs_dirty = 0;
+  file_num[fd].flags &= ~FAT_FLAG_FS_DIRTY;
   return 0;
 }
 
@@ -489,8 +575,7 @@ int sdfat_lookup_path(int fd, const char *path) {
     } else {
       /* otherwise, setup the fd */
       file_num[fd].error = 0;
-      file_num[fd].dirty = 0;
-      file_num[fd].fs_dirty = 0;
+      file_num[fd].flags = FAT_FLAG_OPEN;
       memcpy(file_num[fd].filename, de->filename, 8);
       memcpy(file_num[fd].extension, de->extension, 3);
       file_num[fd].attributes = de->attributes;
@@ -534,28 +619,26 @@ int fat_open(const char *name, int mode) {
     return -EMFILE;   /* too many open files */
   }
   if(mode & O_APPEND) {
-    file_num[fd].append_mode = 1;
-  } else {
-    file_num[fd].append_mode = 0;
+    file_num[fd].flags |= FAT_FLAG_APPEND;
   }
   i = sdfat_lookup_path(fd, name);
   if(i == -ENOENT) {
     /* file doesn't exist */
     if((mode & (O_CREAT)) == 0) {
       /* tried to open a non-existent file with no create */
-      fat_close(fd);
+      file_num[fd].flags = 0;
       return -ENOENT;
     } else {
       /* opening a new file for writing */
       /* TODO */
-      fat_close(fd);
+      file_num[fd].flags = 0;
       return -99;
     }
   } else if(i == 0) {
     /* file does exist */
     if(mode & (O_CREAT | O_EXCL)) {
       /* tried to force creation of an existing file */
-      fat_close(fd);
+      file_num[fd].flags = 0;
       return -EEXIST;
     } else {
       if((mode & (O_WRONLY | O_RDWR)) == 0) {
@@ -566,23 +649,23 @@ int fat_open(const char *name, int mode) {
         /* file opened for write access, check permissions */
         if(fatfs.read_only) {
           /* requested write on read only filesystem */
-          fat_close(fd);
+          file_num[fd].flags = 0;
           return -EROFS;
         }
         if(file_num[fd].attributes & FAT_ATT_RO) {
           /* The file is read-only refuse permission */
-          fat_close(fd);
+          file_num[fd].flags = 0;
           return -EACCES;
         }
         if(file_num[fd].attributes & FAT_ATT_SUBDIR) {
           /* Tried to open a directory for writing */
-          fat_close(fd);
+          file_num[fd].flags = 0;
           return -EISDIR;
         }
         if(mode & O_TRUNC) {
           /* Need to truncate the file to zero length */
           // TODO
-          fat_close(fd);
+          file_num[fd].flags = 0;
           return -99;
         }
         file_num[fd].file_sector = 0;
@@ -594,18 +677,22 @@ int fat_open(const char *name, int mode) {
   }
 }
 
-int fat_close(int fn, int *rerrno) {
-  if(!(file_num[fd].flags & FAT_FILE_OPEN)) {
+int fat_close(int fd, int *rerrno) {
+  if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
     return -1;
   }
-  if(file_num[fd].flags & FAT_FILE_DIRTY) {
+  if(!(file_num[fd].flags & FAT_FLAG_OPEN)) {
+    (*rerrno) = EBADF;
+    return -1;
+  }
+  if(file_num[fd].flags & FAT_FLAG_DIRTY) {
     if(fat_flush(fd)) {
       (*rerrno) = EIO;
       return -1;
     }
   }
-  if(file_num[fd].flags & FAT_FILE_FS_DIRTY) {
+  if(file_num[fd].flags & FAT_FLAG_FS_DIRTY) {
     if(fat_flush_fileinfo(fd)) {
       (*rerrno) = EIO;
       return -1;
@@ -618,7 +705,11 @@ int fat_close(int fn, int *rerrno) {
 int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
-  if((~file_num[fd].flags) & (FAT_FILE_OPEN | FAT_FILE_READ)) {
+  if(fd >= MAX_OPEN_FILES) {
+    (*rerrno) = EBADF;
+    return -1;
+  }
+  if((~file_num[fd].flags) & (FAT_FLAG_OPEN | FAT_FLAG_READ)) {
     (*rerrno) = EBADF;
     return -1;
   }
@@ -639,14 +730,18 @@ int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
 int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
-  if((~file_num[fd].flags) & (FAT_FILE_OPEN | FAT_FILE_WRITE)) {
+  if(fd >= MAX_OPEN_FILES) {
+    (*rerrno) = EBADF;
+    return -1;
+  }
+  if((~file_num[fd].flags) & (FAT_FLAG_OPEN | FAT_FLAG_WRITE)) {
     (*rerrno) = EBADF;
     return -1;
   }
   while(i < count) {
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) == file_num[fd].size) {
       file_num[fd].size++;
-      file_num[fd].fs_dirty = 1;
+      file_num[fd].flags |= FAT_FLAG_DIRTY;
     }
     file_num[fd].buffer[file_num[fd].cursor] = *bt++;
     file_num[fd].cursor++;
@@ -658,70 +753,15 @@ int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
   return i;
 }
 
-int sdfat_lseek(int fd, int ptr, int dir) {
-  unsigned int new_pos;
-  unsigned int old_pos;
-  int new_sec;
-  int i;
-  int file_cluster;
-
-  if(!(available_files & (1 << fd))) {
-    return ptr-1;    /* tried to seek on a file that's not open */
+int fat_fstat(int fd, struct stat *st, int *rerrno) {
+  if(fd >= MAX_OPEN_FILES) {
+    (*rerrno) = EBADF;
+    return -1;
   }
-  
-  if(file_num[fd].dirty) {
-    sdfat_flush(fd);
+  if(!(file_num[fd].flags & FAT_FLAG_OPEN)) {
+    (*rerrno) = EBADF;
+    return -1;
   }
-  old_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor;
-  if(dir == SEEK_SET) {
-    new_pos = ptr;
-  } else if(dir == SEEK_CUR) {
-    new_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor + ptr;
-  } else {
-    new_pos = file_num[fd].size + ptr;
-  }
-  if(new_pos > file_num[fd].size) {
-    return ptr-1; /* tried to seek outside a file */
-  }
-  // optimisation cases
-  if((old_pos/512) == (new_pos/512)) {
-    // case 1: seeking within a disk block
-    file_num[fd].cursor = new_pos & 0x1ff;
-    return new_pos;
-  } else if((new_pos / (fatfs.sectors_per_cluster * 512)) == (old_pos / (fatfs.sectors_per_cluster * 512))) {
-    // case 2: seeking within the cluster, just need to hope forward/back some sectors
-    file_num[fd].file_sector = new_pos / 512;
-    file_num[fd].sector = file_num[fd].sector + (new_pos/512) - (old_pos/512);
-    file_num[fd].sectors_left = file_num[fd].sectors_left + (new_pos/512) - (old_pos/512);
-    file_num[fd].cursor = new_pos & 0x1ff;
-    if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
-      return ptr - 1;
-    }
-    return new_pos;
-  }
-  // otherwise we need to seek the cluster chain
-  file_cluster = new_pos / (fatfs.sectors_per_cluster * 512);
-  
-  file_num[fd].cluster = file_num[fd].full_first_cluster;
-  i = 0;
-  // walk the FAT cluster chain until we get to the right one
-  while(i<file_cluster) {
-    file_num[fd].cluster = sdfat_next_cluster(fd);
-    i++;
-  }
-  file_num[fd].file_sector = new_pos / 512;
-  file_num[fd].cursor = new_pos & 0x1ff;
-  new_sec = new_pos - file_cluster * fatfs.sectors_per_cluster * 512;
-  new_sec = new_sec / 512;
-  file_num[fd].sector = file_num[fd].cluster * fatfs.sectors_per_cluster + fatfs.cluster0 + new_sec;
-  file_num[fd].sectors_left = fatfs.sectors_per_cluster - new_sec - 1;
-  if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
-    return ptr-1;
-  }
-  return new_pos;
-}
-
-int sdfat_stat(int fd, struct stat *st) {
   st->st_dev = 0;
   st->st_ino = 0;
   if(file_num[fd].attributes & FAT_ATT_SUBDIR) {
@@ -741,6 +781,72 @@ int sdfat_stat(int fd, struct stat *st) {
   st->st_blksize = 512;
   st->st_blocks = 1;  /* number of blocks allocated for this object */
   return 0; 
+}
+
+int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
+  unsigned int new_pos;
+  unsigned int old_pos;
+  int new_sec;
+  int i;
+  int file_cluster;
+
+  if(fd >= MAX_OPEN_FILES) {
+    (*rerrno) = EBADF;
+    return ptr-1;
+  }
+  if(!(file_num[fd].flags & FAT_FLAG_OPEN)) {
+    (*rerrno) = EBADF;
+    return ptr-1;    /* tried to seek on a file that's not open */
+  }
+  
+  fat_flush(fd);
+  old_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor;
+  if(dir == SEEK_SET) {
+    new_pos = ptr;
+  } else if(dir == SEEK_CUR) {
+    new_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor + ptr;
+  } else {
+    new_pos = file_num[fd].size + ptr;
+  }
+  if(new_pos > file_num[fd].size) {
+    return ptr-1; /* tried to seek outside a file */
+  }
+  // optimisation cases
+  if((old_pos/512) == (new_pos/512)) {
+    // case 1: seeking within a disk block
+    file_num[fd].cursor = new_pos & 0x1ff;
+    return new_pos;
+  } else if((new_pos / (fatfs.sectors_per_cluster * 512)) == (old_pos / (fatfs.sectors_per_cluster * 512))) {
+    // case 2: seeking within the cluster, just need to hop forward/back some sectors
+    file_num[fd].file_sector = new_pos / 512;
+    file_num[fd].sector = file_num[fd].sector + (new_pos/512) - (old_pos/512);
+    file_num[fd].sectors_left = file_num[fd].sectors_left + (new_pos/512) - (old_pos/512);
+    file_num[fd].cursor = new_pos & 0x1ff;
+    if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
+      return ptr - 1;
+    }
+    return new_pos;
+  }
+  // otherwise we need to seek the cluster chain
+  file_cluster = new_pos / (fatfs.sectors_per_cluster * 512);
+  
+  file_num[fd].cluster = file_num[fd].full_first_cluster;
+  i = 0;
+  // walk the FAT cluster chain until we get to the right one
+  while(i<file_cluster) {
+    file_num[fd].cluster = sdfat_next_cluster(fd, rerrno);
+    i++;
+  }
+  file_num[fd].file_sector = new_pos / 512;
+  file_num[fd].cursor = new_pos & 0x1ff;
+  new_sec = new_pos - file_cluster * fatfs.sectors_per_cluster * 512;
+  new_sec = new_sec / 512;
+  file_num[fd].sector = file_num[fd].cluster * fatfs.sectors_per_cluster + fatfs.cluster0 + new_sec;
+  file_num[fd].sectors_left = fatfs.sectors_per_cluster - new_sec - 1;
+  if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
+    return ptr-1;
+  }
+  return new_pos;
 }
 
 int sdfat_get_next_dirent(int fd, struct dirent *out_de) {
