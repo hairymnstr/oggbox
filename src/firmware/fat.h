@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <sys/stat.h>
+#include <time.h>
 #include "block.h"
 #include "dirent.h"
 
@@ -140,25 +141,29 @@ typedef struct {
   uint16_t  cursor;
   uint8_t   error;
   uint8_t   dirty;
-  char filename[8];
-  char extension[3];
+  uint8_t   fs_dirty;
+  char      filename[8];
+  char      extension[3];
   uint8_t   attributes;
-  uint8_t   reserved;
-  uint8_t   create_time_fine;
-  uint16_t  create_time;
-  uint16_t  create_date;
-  uint16_t  access_date;
-  uint16_t  high_first_cluster;
-  uint16_t  modified_time;
-  uint16_t  modified_date;
-  uint16_t  first_cluster;
+//   uint8_t   reserved;
+//   uint8_t   create_time_fine;
+//   uint16_t  create_time;
+//   uint16_t  create_date;
+//   uint16_t  access_date;
+//   uint16_t  high_first_cluster;
+//   uint16_t  modified_time;
+//   uint16_t  modified_date;
+//   uint16_t  first_cluster;
   uint32_t  size;
   uint32_t  full_first_cluster;
   uint32_t  entry_sector;
   uint8_t   entry_number;
   uint32_t  file_sector;
   uint32_t  append_mode;
-} __attribute__((__packed__)) FileS;
+  time_t    created;
+  time_t    modified;
+  time_t    accessed;
+} FileS;
 
 // #define MEDIA_BUFFER_SIZE 2048
 // 

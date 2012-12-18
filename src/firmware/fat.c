@@ -17,8 +17,6 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// #include <libopencm3/stm32/nvic.h>
-
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
@@ -30,20 +28,15 @@
 #include "block.h"
 #include "fat.h"
 #include "mbr.h"
-// #include "sd.h"
 
 /**
  * global variable structures.
  * These take the place of a real operating system.
  **/
 
-// SDCard card;
 struct fat_info fatfs;
 FileS file_num[MAX_OPEN_FILES];
 uint32_t available_files;
-// volatile MediaFileS media_file;
-
-// extern int errno;
 
 /**
  * low level FAT access routines
@@ -63,9 +56,18 @@ time_t fat_to_unix_time(uint16_t time) {
   return mktime(&time_str);
 }
 
-//uint16_t sdfat_from_unix_time(int seconds) {
-//
-//}
+uint16_t fat_from_unix_time(time_t seconds) {
+  struct tm *time_str;
+  uint16_t fattime;
+  time_str = gmtime(&seconds);
+  
+  fattime = 0;
+  
+  fattime += time_str->tm_hour << 11;
+  fattime += time_str->tm_min << 5;
+  fattime += time_str->tm_sec >> 1;
+  return fattime;
+}
 
 time_t fat_to_unix_date(uint16_t date) {
   struct tm time_str;
@@ -79,6 +81,21 @@ time_t fat_to_unix_date(uint16_t date) {
   time_str.tm_isdst = -1;
 
   return mktime(&time_str);
+}
+
+uint16_t fat_from_unix_date(time_t seconds) {
+  struct tm *time_str;
+  uint16_t fatdate;
+  
+  time_str = gmtime(&seconds);
+  
+  fatdate = 0;
+  
+  fatdate += (time_str->tm_year - 80) << 9;
+  fatdate += (time_str->tm_mon + 1) << 5;
+  fatdate += time_str->tm_mday;
+  
+  return fatdate;
 }
 
 /* sdfat_get_next_file - returns the next free file descriptor or -1 if none */
@@ -325,9 +342,21 @@ int fatname_to_str(char *output, char *input) {
 /* write a sector back to disc */
 int sdfat_flush(int fd) {
   /* writing not yet implemented */
+  block_write(file_num[fd].sector, file_num[fd].buffer);
   /* just clear this flag so this isn't called every time from now on */
   file_num[fd].dirty = 0;
   return 0;
+}
+
+int sdfat_select_sector(int fd, blockno_t sector) {
+  if(file_num[fd].dirty) {
+    sdfat_flush(fd);
+  }
+  file_num[fd].sector = sector;
+  file_num[fd].sectors_left = (sector - fatfs.cluster0) % fatfs.sectors_per_cluster;
+  file_num[fd].cluster = (sector - fatfs.cluster0) / fatfs.sectors_per_cluster;
+  file_num[fd].cursor = 0;
+  return block_read(file_num[fd].sector, file_num[fd].buffer);
 }
 
 /* get the first sector of a given cluster */
@@ -399,28 +428,32 @@ int sdfat_next_sector(int fd) {
   }
 }
 
-/**
- * externally callable setup routines
- **/
-
-// int sdfat_init() {
-//   available_files = 0;              
-//   sd_init();                        /* setup hardware for the SD Card */
-//   return 0;
-// }
-
-// int sdfat_mount() {
-//   if(sd_card_reset() != 0) {
-//     return -1;
-//   }
-//   if(sd_find_partition() != 0) {
-//     return -2;
-//   }
-//   if(sd_mount_part() != 0) {
-//     return -3;
-//   }
-//   return 0;
-// }
+/* Function to save file meta-info, (size modified date etc.) */
+int fat_flush_fileinfo(int fd) {
+  direntS de;
+  
+  memcpy(de.filename, file_num[fd].filename, 8);
+  memcpy(de.extension, file_num[fd].extension, 3);
+  de.attributes = file_num[fd].attributes;
+  /* fine resolution = 10ms, only using unix time stamp so save
+   * the unit second, create_time only saves in 2s resolution */
+  de.create_time_fine = (file_num[fd].created & 1) * 100;
+  de.create_time = fat_from_unix_time(file_num[fd].created);
+  de.create_date = fat_from_unix_date(file_num[fd].created);
+  de.access_date = fat_from_unix_date(file_num[fd].accessed);
+  de.high_first_cluster = file_num[fd].full_first_cluster >> 16;
+  de.modified_time = fat_from_unix_time(file_num[fd].modified);
+  de.modified_date = fat_from_unix_date(file_num[fd].modified);
+  de.first_cluster = file_num[fd].full_first_cluster & 0xffff;
+  de.size = file_num[fd].size;
+  
+  sdfat_select_sector(fd, file_num[fd].entry_sector);
+  memcpy(&file_num[fd].buffer[file_num[fd].entry_number * 32], &de, 32);
+  sdfat_flush(fd);
+  /* mark the filesystem as consistent now */
+  file_num[fd].fs_dirty = 0;
+  return 0;
+}
 
 /**
  * callable file access routines
@@ -529,11 +562,9 @@ int sdfat_lookup_path(int fd, const char *path) {
     file_num[fd].file_sector = 0;
     file_num[fd].attributes = FAT_ATT_SUBDIR;
     file_num[fd].size = 4096;
-    file_num[fd].access_date = 0;
-    file_num[fd].modified_date = 0;
-    file_num[fd].modified_time = 0;
-    file_num[fd].create_date = 0;
-    file_num[fd].create_time = 0;
+    file_num[fd].accessed = 0;
+    file_num[fd].modified = 0;
+    file_num[fd].created = 0;
     sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
     return 0;
   }
@@ -585,11 +616,18 @@ int sdfat_lookup_path(int fd, const char *path) {
       return -ENOTDIR;
     } else {
       /* otherwise, setup the fd */
-      memcpy((void *)(file_num[fd].filename), (void *)(file_num[fd].buffer + (i * 32)), 32);
+//       memcpy((void *)(file_num[fd].filename), (void *)(file_num[fd].buffer + (i * 32)), 32);
+      file_num[fd].error = 0;
+      file_num[fd].dirty = 0;
+      file_num[fd].fs_dirty = 0;
+      memcpy(file_num[fd].filename, de->filename, 8);
+      memcpy(file_num[fd].extension, de->extension, 3);
+      file_num[fd].attributes = de->attributes;
+      file_num[fd].size = de->attributes;
       if(fatfs.type == PART_TYPE_FAT16) {
-        file_num[fd].full_first_cluster = file_num[fd].first_cluster;
+        file_num[fd].full_first_cluster = de->first_cluster;
       } else {
-        file_num[fd].full_first_cluster = file_num[fd].first_cluster + file_num[fd].high_first_cluster;
+        file_num[fd].full_first_cluster = de->first_cluster + (de->high_first_cluster << 16);
       }
 
       /* this following special case occurs when a subdirectory's .. entry is opened. */
@@ -600,6 +638,10 @@ int sdfat_lookup_path(int fd, const char *path) {
       file_num[fd].entry_sector = file_num[fd].sector;
       file_num[fd].entry_number = i;
       file_num[fd].file_sector = 0;
+      
+      file_num[fd].created = fat_to_unix_date(de->create_date) + fat_to_unix_time(de->create_time) + de->create_time_fine;
+      file_num[fd].modified = fat_to_unix_date(de->modified_date) + fat_to_unix_time(de->modified_date);
+      file_num[fd].accessed = fat_to_unix_date(de->access_date);
       sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
       break;
     }
@@ -716,11 +758,9 @@ int sdfat_stat(int fd, struct stat *st) {
   st->st_rdev = 0;
   st->st_size = file_num[fd].size;
   /* should be seconds since epoch. */
-  st->st_atime = fat_to_unix_time(file_num[fd].access_date);
-  st->st_mtime = (fat_to_unix_date(file_num[fd].modified_date) +
-                  fat_to_unix_time(file_num[fd].modified_time));
-  st->st_ctime = (fat_to_unix_date(file_num[fd].create_date) +
-                  fat_to_unix_time(file_num[fd].create_time));
+  st->st_atime = file_num[fd].accessed;
+  st->st_mtime = file_num[fd].modified;
+  st->st_ctime = file_num[fd].created;
   st->st_blksize = 512;
   st->st_blocks = 1;  /* number of blocks allocated for this object */
   return 0; 

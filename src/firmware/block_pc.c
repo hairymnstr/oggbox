@@ -2,7 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "hash.h"
 #include "block.h"
+#include "block_pc.h"
 
 uint64_t block_fs_size=0;
 uint8_t *blocks = NULL;
@@ -77,4 +79,12 @@ int block_pc_snapshot(const char *filename, uint64_t start, uint64_t len) {
 
 int block_pc_snapshot_all(const char *filename) {
   return block_pc_snapshot(filename, 0, block_fs_size);
+}
+
+int block_pc_hash(uint64_t start, uint64_t len, uint8_t hash[16]) {
+  return md5_memory(&blocks[start], len , hash);
+}
+
+int block_pc_hash_all(uint8_t hash[16]) {
+  return md5_memory(blocks, block_fs_size, hash);
 }

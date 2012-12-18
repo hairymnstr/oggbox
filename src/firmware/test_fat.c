@@ -5,6 +5,7 @@
 #include <errno.h>
 #include "fat.h"
 #include "block.h"
+#include "block_pc.h"
 #include "mbr.h"
 
 /**************************************************************
