@@ -455,6 +455,117 @@ int fat_flush_fileinfo(int fd) {
   return 0;
 }
 
+int sdfat_lookup_path(int fd, const char *path) {
+  char dosname[12];
+  char isdir;
+  int i;
+  int path_pointer = 0;
+  direntS *de;
+
+  if(path[0] != '/') {
+    return -2;                                /* bad path, we have no cwd */
+  }
+
+  /* select root directory */
+  sdfat_select_cluster(fd, fatfs.root_cluster);
+
+  path_pointer++;
+
+  if(*(path + path_pointer) == 0) {
+    /* user selected the root directory to open. */
+    file_num[fd].full_first_cluster = fatfs.root_cluster;
+    file_num[fd].entry_sector = 0;
+    file_num[fd].entry_number = 0;
+    file_num[fd].file_sector = 0;
+    file_num[fd].attributes = FAT_ATT_SUBDIR;
+    file_num[fd].size = 4096;
+    file_num[fd].accessed = 0;
+    file_num[fd].modified = 0;
+    file_num[fd].created = 0;
+    sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
+    return 0;
+  }
+
+  while(1) {
+    if(make_dos_name(dosname, path, &path_pointer)) {
+      return -1;  /* invalid path name */
+    }
+//     printf("%s\r\n", dosname);
+    while(1) {
+//       printf("looping [s:%d/%d c:%d]\r\n", file_num[fd].sectors_left, fatfs.sectors_per_cluster, file_num[fd].cluster);
+      for(i=0;i<16;i++) {
+        if(strncmp(dosname, (char *)(file_num[fd].buffer + (i * 32)), 11) == 0) {
+          break;
+        }
+//         file_num[fd].buffer[i * 32 + 11] = 0;
+//         printf("%s %d\r\n", (char *)(file_num[fd].buffer + (i * 32)), i);
+      }
+      if(i == 16) {
+        if(sdfat_next_sector(fd) != 0) {
+          return -ENOENT;
+        }
+      } else {
+        break;
+      }
+    }
+//     printf("got here %d\r\n", i);
+    de = (direntS *)(file_num[fd].buffer + (i * 32));
+//     iprintf("%s\r\n", de->filename);
+    isdir = de->attributes & 0x10;
+    /* if dir, and there are more path elements, select */
+    if(isdir && (doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer + 1]) != 0)) {
+      path_pointer++;
+      if(fatfs.type == PART_TYPE_FAT16) {
+        if(de->first_cluster == 0) {
+          sdfat_select_cluster(fd, fatfs.root_cluster);
+        } else {
+          sdfat_select_cluster(fd, de->first_cluster);
+        }
+      } else {
+        if(de->first_cluster + (de->high_first_cluster << 16) == 0) {
+          sdfat_select_cluster(fd, fatfs.root_cluster);
+        } else {
+          sdfat_select_cluster(fd, de->first_cluster + (de->high_first_cluster << 16));
+        }
+      }
+    } else if((doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer+1]) != 0)) {
+      /* path end not reached but this is not a directory */
+      return -ENOTDIR;
+    } else {
+      /* otherwise, setup the fd */
+      file_num[fd].error = 0;
+      file_num[fd].dirty = 0;
+      file_num[fd].fs_dirty = 0;
+      memcpy(file_num[fd].filename, de->filename, 8);
+      memcpy(file_num[fd].extension, de->extension, 3);
+      file_num[fd].attributes = de->attributes;
+      file_num[fd].size = de->attributes;
+      if(fatfs.type == PART_TYPE_FAT16) {
+        file_num[fd].full_first_cluster = de->first_cluster;
+      } else {
+        file_num[fd].full_first_cluster = de->first_cluster + (de->high_first_cluster << 16);
+      }
+
+      /* this following special case occurs when a subdirectory's .. entry is opened. */
+      if(file_num[fd].full_first_cluster == 0) {
+        file_num[fd].full_first_cluster = fatfs.root_cluster;
+      }
+
+      file_num[fd].entry_sector = file_num[fd].sector;
+      file_num[fd].entry_number = i;
+      file_num[fd].file_sector = 0;
+      
+      file_num[fd].created = fat_to_unix_date(de->create_date) + fat_to_unix_time(de->create_time) + de->create_time_fine;
+      file_num[fd].modified = fat_to_unix_date(de->modified_date) + fat_to_unix_time(de->modified_date);
+      file_num[fd].accessed = fat_to_unix_date(de->access_date);
+      sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
+      break;
+    }
+  }
+
+  return 0;
+}
+
 /**
  * callable file access routines
  */
@@ -536,148 +647,38 @@ int fat_close(int fn) {
   return 0;
 }
 
-int sdfat_lookup_path(int fd, const char *path) {
-  char dosname[12];
-  char isdir;
-  int i;
-  int path_pointer = 0;
-  direntS *de;
-//   printf("sdfat_lookup_path\r\n");
-
-  if(path[0] != '/') {
-    return -2;                                /* bad path, we have no cwd */
-  }
-
-  /* select root directory */
-//   printf("selecting card root dir on cluster %d\r\n", fatfs.root_cluster);
-  sdfat_select_cluster(fd, fatfs.root_cluster);
-
-  path_pointer++;
-
-  if(*(path + path_pointer) == 0) {
-    /* user selected the root directory to open. */
-    file_num[fd].full_first_cluster = fatfs.root_cluster;
-    file_num[fd].entry_sector = 0;
-    file_num[fd].entry_number = 0;
-    file_num[fd].file_sector = 0;
-    file_num[fd].attributes = FAT_ATT_SUBDIR;
-    file_num[fd].size = 4096;
-    file_num[fd].accessed = 0;
-    file_num[fd].modified = 0;
-    file_num[fd].created = 0;
-    sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
-    return 0;
-  }
-
-  while(1) {
-    if(make_dos_name(dosname, path, &path_pointer)) {
-      return -1;  /* invalid path name */
-    }
-//     printf("%s\r\n", dosname);
-    while(1) {
-//       printf("looping [s:%d/%d c:%d]\r\n", file_num[fd].sectors_left, fatfs.sectors_per_cluster, file_num[fd].cluster);
-      for(i=0;i<16;i++) {
-        if(strncmp(dosname, (char *)(file_num[fd].buffer + (i * 32)), 11) == 0) {
-          break;
-        }
-//         file_num[fd].buffer[i * 32 + 11] = 0;
-//         printf("%s %d\r\n", (char *)(file_num[fd].buffer + (i * 32)), i);
-      }
-      if(i == 16) {
-        if(sdfat_next_sector(fd) != 0) {
-          return -ENOENT;
-        }
-      } else {
-        break;
-      }
-    }
-//     printf("got here %d\r\n", i);
-    de = (direntS *)(file_num[fd].buffer + (i * 32));
-//     iprintf("%s\r\n", de->filename);
-    isdir = de->attributes & 0x10;
-    /* if dir, and there are more path elements, select */
-    if(isdir && (doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer + 1]) != 0)) {
-      path_pointer++;
-      if(fatfs.type == PART_TYPE_FAT16) {
-        if(de->first_cluster == 0) {
-          sdfat_select_cluster(fd, fatfs.root_cluster);
-        } else {
-          sdfat_select_cluster(fd, de->first_cluster);
-        }
-      } else {
-        if(de->first_cluster + (de->high_first_cluster << 16) == 0) {
-          sdfat_select_cluster(fd, fatfs.root_cluster);
-        } else {
-          sdfat_select_cluster(fd, de->first_cluster + (de->high_first_cluster << 16));
-        }
-      }
-    } else if((doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer+1]) != 0)) {
-      /* path end not reached but this is not a directory */
-      return -ENOTDIR;
-    } else {
-      /* otherwise, setup the fd */
-//       memcpy((void *)(file_num[fd].filename), (void *)(file_num[fd].buffer + (i * 32)), 32);
-      file_num[fd].error = 0;
-      file_num[fd].dirty = 0;
-      file_num[fd].fs_dirty = 0;
-      memcpy(file_num[fd].filename, de->filename, 8);
-      memcpy(file_num[fd].extension, de->extension, 3);
-      file_num[fd].attributes = de->attributes;
-      file_num[fd].size = de->attributes;
-      if(fatfs.type == PART_TYPE_FAT16) {
-        file_num[fd].full_first_cluster = de->first_cluster;
-      } else {
-        file_num[fd].full_first_cluster = de->first_cluster + (de->high_first_cluster << 16);
-      }
-
-      /* this following special case occurs when a subdirectory's .. entry is opened. */
-      if(file_num[fd].full_first_cluster == 0) {
-        file_num[fd].full_first_cluster = fatfs.root_cluster;
-      }
-
-      file_num[fd].entry_sector = file_num[fd].sector;
-      file_num[fd].entry_number = i;
-      file_num[fd].file_sector = 0;
-      
-      file_num[fd].created = fat_to_unix_date(de->create_date) + fat_to_unix_time(de->create_time) + de->create_time_fine;
-      file_num[fd].modified = fat_to_unix_date(de->modified_date) + fat_to_unix_time(de->modified_date);
-      file_num[fd].accessed = fat_to_unix_date(de->access_date);
-      sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
-      break;
-    }
-  }
-
-//   int m, n;
-//   for(m=0;m<4;m++) {
-//     for(n=0;n<8;n++) {
-//       iprintf("%02X ", *(file_num[fd].filename + (m * 4 + n)));
-//     }
-//     iprintf("\r\n");
-//   }
-
-  return 0;
-}
-
 int sdfat_read(int fd, void *buffer, int count) {
   int i=0;
-  char *bt = (char *)buffer;
-//  iprintf("sdfat_read\n");
-//  iprintf("read %d bytes from file %d\n", count, fd);
-//  iprintf("file size %d bytes, cursor at %d\n",
-//          file_num[fd].size,
-//          file_num[fd].cursor + file_num[fd].file_sector * 512);
+  uint8_t *bt = (uint8_t *)buffer;
   while(i < count) {
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) >= file_num[fd].size) {
       break;   /* end of file */
     }
-    *bt++ = *(char *)(file_num[fd].buffer + file_num[fd].cursor);
+    *bt++ = *(uint8_t *)(file_num[fd].buffer + file_num[fd].cursor);
     file_num[fd].cursor++;
     if(file_num[fd].cursor == 512) {
       sdfat_next_sector(fd);
     }
     i++;
   }
-//  iprintf("actually read %d bytes\n", i);
+  return i;
+}
+
+int fat_write(int fd, const void *buffer, size_t count) {
+  int i=0;
+  uint8_t *bt = (uint8_t *)buffer;
+  while(i < count) {
+    if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) == file_num[fd].size) {
+      file_num[fd].size++;
+      file_num[fd].fs_dirty = 1;
+    }
+    file_num[fd].buffer[file_num[fd].cursor] = *bt++;
+    file_num[fd].cursor++;
+    if(file_num[fd].cursor == 512) {
+      sdfat_next_sector(fd);
+    }
+    i++;
+  }
   return i;
 }
 
@@ -801,112 +802,3 @@ int sdfat_get_next_dirent(int fd, struct dirent *out_de) {
     }
   }
 }
-
-// char *sdfat_open_media(char *filename) {
-//   int fn;
-//   iprintf("sdfat_open_media - entry\r\n");
-//   fn = sdfat_open(filename, O_RDONLY);
-//   media_file.cluster = file_num[fn].full_first_cluster;
-//   media_file.file_len = file_num[fn].size;
-//   media_file.nearly_near_end = 0;
-//   media_file.near_end = 0;
-//   media_file.meta_block = 0;
-//   media_file.active_buffer = 0;
-//   media_file.block_count = 0;
-//   media_file.block = media_file.cluster * card.sectors_per_cluster + card.cluster0;
-//   /* ought to check cluster size here !! */
-//   media_file.buffer_ready[0] = 1;
-//   sd_read_multiblock(media_file.buffer[0], media_file.block, 4, &media_file.buffer_ready[0]);
-//   media_file.block += 4;
-//   media_file.block_count += 4;
-//   media_file.buffer_ready[1] = 1;
-//   sd_read_multiblock(media_file.buffer[1], media_file.block, 4, &media_file.buffer_ready[1]);
-//   /* don't need the fd we used to open the file with now */
-//   sdfat_close(fn);
-// //   iprintf("media_file.cluster = %d\r\n", media_file.cluster);
-// //   iprintf("sdfat_open_media - exit\r\n");
-// //   int i, j;
-// //   for(i=0;i<16;i++) {
-// //     for(j=0;j<32;j++) {
-// //       iprintf("%02X ", media_file.buffer[0][i*32 + j]);
-// //     }
-// //     for(j=0;j<32;j++) {
-// //       iprintf("%c", media_file.buffer[0][i*32 + j]);
-// //     }
-// //     iprintf("\r\n");
-// //   }
-//   //while(1) {;}
-//   return media_file.buffer[0];
-// }
-// 
-// int media_get_next_cluster() {
-//   unsigned int i, j;
-//   volatile uint32_t flag;
-// //  iprintf("media_get_next_cluster - entry\n");
-// //  iprintf("media_file.cluster = %d\n", media_file.cluster);
-//   i = media_file.cluster;
-//   i = i * card.fat_entry_len;     /* either 2 bytes for FAT16 or 4 for FAT32 */
-//   j = (i / 512) + card.active_fat_start; /* get the sector number we want */
-//   //iprintf("Reading sector %d of FAT at %d for cluster %d\n", (i / 512), card.active_fat_start + (i / 512), file_num[fd].cluster);
-//   if(j != media_file.meta_block) {
-//     flag = 1;
-//     sd_read_multiblock(media_file.meta_buffer, j, 1, &flag);
-//     while(flag) {__asm__("nop\n\t");}
-// //       return -1;
-// //     }
-//     media_file.meta_block = j;
-//   }
-//   i = i & 0x1FF;
-//   j = media_file.meta_buffer[i++];
-//   j += (media_file.meta_buffer[i++] << 8);
-//   if(card.fs == PART_TYPE_FAT32) {
-//     j += media_file.meta_buffer[i++] << 16;
-//     j += media_file.meta_buffer[i++] << 24;
-//   }
-//   if(j < 2) {
-//     media_file.error = FAT_ERROR_CLUSTER;
-//     iprintf("ERROR CLUSTER %08X\n", j);
-//     return -1;
-//   } else if(j >= card.end_cluster_marker) {
-//     iprintf("END OF FILE %08X\n", j);
-//     media_file.error = FAT_END_OF_FILE;
-//     return -1;
-//   }
-//   media_file.cluster = j;
-// //  iprintf("media_get_next_cluster - exit\n");
-//   return 0;
-// }
-// 
-// /**
-//  *  sdfat_read_media - returns a pointer to the next 2k section of the open
-//  *                     file
-//  */
-// char *sdfat_read_media() {
-// //  iprintf("sdfat_read_media - entry\n");
-// //  iprintf("media_file.block = %d\n", media_file.block);
-//   /* setup read-ahead fetch */
-//   if(!media_file.nearly_near_end) {
-//     media_file.block_count += 4;
-//     media_file.block += 4;
-//     if(media_file.block_count * 512 > media_file.file_len) {
-//       media_file.nearly_near_end = 1;
-//       media_file.file_end = media_file.file_len - ((media_file.block_count - 4) * 512);
-//     }
-//     if((media_file.block_count % card.sectors_per_cluster) == 0) {
-// //    iprintf("media_file.block_count = %d, card.sectors_per_cluster = %d\n", media_file.block_count, card.sectors_per_cluster);
-//       /* need to get the next cluster */
-//       media_get_next_cluster();
-//       media_file.block = card.cluster0 + media_file.cluster * card.sectors_per_cluster;
-//     }
-//     media_file.buffer_ready[media_file.active_buffer] = 1;
-//     sd_read_multiblock(media_file.buffer[media_file.active_buffer], media_file.block, 4, &media_file.buffer_ready[media_file.active_buffer]);
-//   } else {
-//     media_file.near_end = 1;
-//   }
-//   media_file.active_buffer ^= 1; // (media_file.active_buffer + 1) % 2;
-// //  iprintf("sdfat_read_media - exit\n\n");
-//   /* check that the data we're returning is ready */
-//   while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\r");}
-//   return media_file.buffer[media_file.active_buffer];
-// }
-// 
