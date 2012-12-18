@@ -39,7 +39,10 @@ int test_open(int p) {
                         "Test O_RDONLY on a directory.",
                         "Test O_WRONLY on a missing file.",
                         "Test O_RDWR on a missing file.",
-                        "Test O_WRONLY on a missing file.",
+                        "Test O_RDONLY on a missing file.",
+                        "Test O_WRONLY on a path with file as non terminal member.",
+                        "Test O_RDWR on a path with file as non terminal member.",
+                        "Test O_RDONLY on a path with a file as non terminal member.",
   };
   const char *filename[] = {"/ROFILE.TXT",
                             "/ROFILE.TXT",
@@ -50,8 +53,14 @@ int test_open(int p) {
                             "/MISSING.TXT",
                             "/MISSING.TXT",
                             "/MISSING.TXT",
+                            "/ROFILE.TXT/NONE.TXT",
+                            "/ROFILE.TXT/NONE.TXT",
+                            "/ROFILE.TXT/NONE.TXT",
   };
   const int flags[] = {O_WRONLY,
+                       O_RDWR,
+                       O_RDONLY,
+                       O_WRONLY,
                        O_RDWR,
                        O_RDONLY,
                        O_WRONLY,
@@ -70,8 +79,12 @@ int test_open(int p) {
                         -ENOENT,
                         -ENOENT,
                         -ENOENT,
+                        -ENOTDIR,
+                        -ENOTDIR,
+                        -ENOTDIR,
   };
-  const int cases = 9;
+  const int cases = 12;
+  
   for(i=0;i<cases;i++) {
     printf("[%4d] Testing %s", p++, desc[i]);
     v = fat_open(filename[i], flags[i]);
@@ -97,20 +110,6 @@ int main(int argc, char *argv[]) {
   printf("[%4d] mount filesystem, FAT32", p++);
   printf("   %d\n", fat_mount(0, PART_TYPE_FAT32));
 
-//   printf("[%4d] open non-existent file read-only", p++);
-//   v = fat_open("missing.txt", O_RDONLY);
-//   printf("   %d %s\n", v, strerror(-v));
-//   if(v != -ENOENT) {
-//     printf("Failed, expected ENOENT\n");
-//     exit(-1);
-//   }
-//   printf("[%4d] open non-existent file read-write", p++);
-//   v = fat_open("missing.txt", O_RDWR);
-//   printf("   %d %s\n", v, strerror(-v));
-//   if(v != -ENOENT) {
-//     printf("Failed, expected ENOENT\n");
-//     exit(-1);
-//   }
   p = test_open(p);
   exit(0);
 }

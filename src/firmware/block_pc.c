@@ -1,16 +1,29 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "block.h"
 
-FILE *block_fp=NULL;
 uint64_t block_fs_size=0;
+uint8_t *blocks = NULL;
 
 int block_init() {
-  if(!(block_fp = fopen("filesystem.img", "rb+"))) {
+  FILE *block_fp;
+  if(!(block_fp = fopen("filesystem.img", "rb"))) {
     return -1;
   }
   fseek(block_fp, 0, SEEK_END);
   block_fs_size = ftell(block_fp);
+  if(!(block_fs_size < 2048L * 1024L * 1024L)) {
+    printf("Aborting, image is over 2GB.\n");
+    exit(-1);
+  }
+  blocks = (uint8_t *)malloc(sizeof(uint8_t) * block_fs_size);
+  
+  fseek(block_fp, 0, SEEK_SET);
+  fread(blocks, 1, block_fs_size, block_fp);
+  
+  fclose(block_fp);
   return 0;
 }
 
@@ -20,11 +33,12 @@ int block_read(blockno_t block, void *buffer) {
   if((block+1) * BLOCK_SIZE - 1 > block_fs_size) {
     return -1;
   }
-  fseek(block_fp, block * BLOCK_SIZE, SEEK_SET);
-  if(fread(buffer, 1, BLOCK_SIZE, block_fp) < BLOCK_SIZE) {
-    return -1;
-  }
-  fflush(block_fp);
+//   fseek(block_fp, block * BLOCK_SIZE, SEEK_SET);
+//   if(fread(buffer, 1, BLOCK_SIZE, block_fp) < BLOCK_SIZE) {
+//     return -1;
+//   }
+//   fflush(block_fp);
+  memcpy(buffer, blocks + block * BLOCK_SIZE, BLOCK_SIZE);
   return 0;
 }
 
@@ -33,14 +47,34 @@ int block_write(blockno_t block, void *buffer) {
     return -1;
   }
   
-  fseek(block_fp, block * BLOCK_SIZE, SEEK_SET);
-  if(fwrite(buffer, 1, BLOCK_SIZE, block_fp) < BLOCK_SIZE) {
-    return -1;
-  }
-  fflush(block_fp);
+//   fseek(block_fp, block * BLOCK_SIZE, SEEK_SET);
+//   if(fwrite(buffer, 1, BLOCK_SIZE, block_fp) < BLOCK_SIZE) {
+//     return -1;
+//   }
+//   fflush(block_fp);
+  memcpy(blocks + block * BLOCK_SIZE, buffer, BLOCK_SIZE);
   return 0;
 }
 
 int block_get_size() {
   return BLOCK_SIZE;
+}
+
+
+int block_pc_snapshot(const char *filename, uint64_t start, uint64_t len) {
+  FILE *fp;
+  
+  if(!(fp = fopen(filename, "wb"))) {
+    return -1;
+  }
+  
+  fwrite(blocks + start, 1, len, fp);
+  
+  fclose(fp);
+  
+  return 0;
+}
+
+int block_pc_snapshot_all(const char *filename) {
+  return block_pc_snapshot(filename, 0, block_fs_size);
 }

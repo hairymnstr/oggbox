@@ -440,7 +440,7 @@ int fat_open(const char *name, int mode) {
     file_num[fd].append_mode = 0;
   }
   i = sdfat_lookup_path(fd, name);
-  if(i != 0) {
+  if(i == -ENOENT) {
     /* file doesn't exist */
     if((mode & (O_CREAT)) == 0) {
       /* tried to open a non-existent file with no create */
@@ -452,7 +452,7 @@ int fat_open(const char *name, int mode) {
       fat_close(fd);
       return -99;
     }
-  } else {
+  } else if(i == 0) {
     /* file does exist */
     if(mode & (O_CREAT | O_EXCL)) {
       /* tried to force creation of an existing file */
@@ -490,6 +490,8 @@ int fat_open(const char *name, int mode) {
         return fd;
       }
     }
+  } else {
+    return i;
   }
 }
 
@@ -547,12 +549,12 @@ int sdfat_lookup_path(int fd, const char *path) {
         if(strncmp(dosname, (char *)(file_num[fd].buffer + (i * 32)), 11) == 0) {
           break;
         }
-        file_num[fd].buffer[i * 32 + 11] = 0;
+//         file_num[fd].buffer[i * 32 + 11] = 0;
 //         printf("%s %d\r\n", (char *)(file_num[fd].buffer + (i * 32)), i);
       }
       if(i == 16) {
         if(sdfat_next_sector(fd) != 0) {
-          return -1;
+          return -ENOENT;
         }
       } else {
         break;
@@ -578,6 +580,9 @@ int sdfat_lookup_path(int fd, const char *path) {
           sdfat_select_cluster(fd, de->first_cluster + (de->high_first_cluster << 16));
         }
       }
+    } else if((doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer+1]) != 0)) {
+      /* path end not reached but this is not a directory */
+      return -ENOTDIR;
     } else {
       /* otherwise, setup the fd */
       memcpy((void *)(file_num[fd].filename), (void *)(file_num[fd].buffer + (i * 32)), 32);
