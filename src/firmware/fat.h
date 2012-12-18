@@ -134,34 +134,39 @@ typedef struct {
 } __attribute__((__packed__)) direntS;
 
 typedef struct {
-  uint8_t   open;
-  char      buffer[512];
+  uint8_t   flags;
+  uint8_t   buffer[512];
   uint32_t  sector;
   uint32_t  cluster;
   uint8_t   sectors_left;
   uint16_t  cursor;
   uint8_t   error;
-  uint8_t   dirty;
-  uint8_t   fs_dirty;
   char      filename[8];
   char      extension[3];
   uint8_t   attributes;
-  uint32_t  size;
+  size_t    size;
   uint32_t  full_first_cluster;
   uint32_t  entry_sector;
   uint8_t   entry_number;
   uint32_t  file_sector;
-  uint32_t  append_mode;
   time_t    created;
   time_t    modified;
   time_t    accessed;
 } FileS;
 
-int fat_mount(blockno_t, uint8_t);
+// flag values for FileS
+#define FAT_FLAG_OPEN 1
+#define FAT_FLAG_READ 2
+#define FAT_FLAG_WRITE 4
+#define FAT_FLAG_APPEND 8
+#define FAT_FLAG_DIRTY 16
+#define FAT_FLAG_FS_DIRTY 32
 
-// int sdfat_init();
-// int sdfat_mount();
 int sdfat_lookup_path(int, const char *);
+int sdfat_next_sector(int fd);
+
+
+int fat_mount(blockno_t, uint8_t);
 int fat_open(const char *, int);
 int fat_close(int);
 int fat_read(int, void *, size_t, int *);
@@ -169,10 +174,5 @@ int fat_write(int, const void *, size_t, int *);
 int sdfat_lseek(int, int, int);
 int sdfat_get_next_dirent(int, struct dirent *);
 int sdfat_stat(int fd, struct stat *st);
-
-int sdfat_next_sector(int fd);
-
-// char *sdfat_open_media(char *);
-// char *sdfat_read_media();
 
 #endif

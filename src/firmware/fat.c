@@ -36,7 +36,7 @@
 
 struct fat_info fatfs;
 FileS file_num[MAX_OPEN_FILES];
-uint32_t available_files;
+// uint32_t available_files;
 
 /**
  * low level FAT access routines
@@ -100,15 +100,13 @@ uint16_t fat_from_unix_date(time_t seconds) {
 
 /* sdfat_get_next_file - returns the next free file descriptor or -1 if none */
 int8_t fat_get_next_file() {
-  uint32_t i = 1;
   int j;
 
   for(j=0;j<MAX_OPEN_FILES;j++) {
-    if((available_files & i) == 0) {
-      available_files |= i;
+    if(file_num[fd].flags & FAT_FILE_OPEN) == 0) {
+      file_num[fd].flags = FAT_FILE_OPEN;
       return j;
     }
-    i <<= 1;
   }
   return -1;
 }
@@ -155,49 +153,6 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
   
   return 0;
 }
-
-// uint8_t sd_mount_part() {
-//   uint32_t i;
-//   boot_sector_fat16 *boot16;
-//   boot_sector_fat32 *boot32;
-// 
-//   if(!((card.fs == PART_TYPE_FAT16) || (card.fs == PART_TYPE_FAT32))) {
-//     card.error = SD_ERR_NO_FAT;
-//     return -1;
-//   }
-//   sd_read_block(file_num[0].buffer, card.part);
-//   
-//   available_files = 0;
-//   if(card.fs == PART_TYPE_FAT16) {
-//     card.fat_entry_len = 2;
-//     card.end_cluster_marker = 0xFFF0;
-//     boot16 = (boot_sector_fat16 *)file_num[0].buffer;
-//     card.sectors_per_cluster = boot16->cluster_size;
-//     card.root_len = boot16->root_entries;
-//     i = card.part;
-//     i += boot16->reserved_sectors;
-//     card.active_fat_start = i;
-//     i += (boot16->sectors_per_fat * boot16->num_fats);
-//     card.root_start = i;
-//     i += (boot16->root_entries * 32) / 512;
-//     i -= (boot16->cluster_size * 2);
-//     card.cluster0 = i;
-//     card.root_cluster = 1;
-//   } else {
-//     card.fat_entry_len = 4;
-//     card.end_cluster_marker = 0xFFFFFFF0;
-//     boot32 = (boot_sector_fat32 *)(file_num[0].buffer);
-//     card.sectors_per_cluster = boot32->cluster_size;
-//     i = card.part;
-//     i += boot32->reserved_sectors;
-//     card.active_fat_start = i;
-//     i += (boot32->sectors_per_fat * boot32->num_fats);
-//     i -= (boot32->cluster_size * 2);
-//     card.cluster0 = i;
-//     card.root_cluster = boot32->root_start;
-//   }
-//   return 0;
-// }
 
 /*
   doschar - returns a dos file entry compatible version of character c
@@ -639,18 +594,31 @@ int fat_open(const char *name, int mode) {
   }
 }
 
-int fat_close(int fn) {
-  if(!(available_files & (1 << fn))) {
-    return -1;    /* tried to close a file that's not open */
+int fat_close(int fn, int *rerrno) {
+  if(!(file_num[fd].flags & FAT_FILE_OPEN)) {
+    (*rerrno) = EBADF;
+    return -1;
   }
-  available_files &= ~(1 << fn);
+  if(file_num[fd].flags & FAT_FILE_DIRTY) {
+    if(fat_flush(fd)) {
+      (*rerrno) = EIO;
+      return -1;
+    }
+  }
+  if(file_num[fd].flags & FAT_FILE_FS_DIRTY) {
+    if(fat_flush_fileinfo(fd)) {
+      (*rerrno) = EIO;
+      return -1;
+    }
+  }
+  file_num[fd].flags = 0;
   return 0;
 }
 
 int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
-  if(!file_num[fd].open) {
+  if((~file_num[fd].flags) & (FAT_FILE_OPEN | FAT_FILE_READ)) {
     (*rerrno) = EBADF;
     return -1;
   }
@@ -671,6 +639,10 @@ int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
 int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
+  if((~file_num[fd].flags) & (FAT_FILE_OPEN | FAT_FILE_WRITE)) {
+    (*rerrno) = EBADF;
+    return -1;
+  }
   while(i < count) {
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) == file_num[fd].size) {
       file_num[fd].size++;
