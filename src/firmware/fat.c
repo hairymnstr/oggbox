@@ -647,9 +647,13 @@ int fat_close(int fn) {
   return 0;
 }
 
-int fat_read(int fd, void *buffer, size_t count) {
+int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
+  if(!file_num[fd].open) {
+    (*rerrno) = EBADF;
+    return -1;
+  }
   while(i < count) {
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) >= file_num[fd].size) {
       break;   /* end of file */
@@ -664,7 +668,7 @@ int fat_read(int fd, void *buffer, size_t count) {
   return i;
 }
 
-int fat_write(int fd, const void *buffer, size_t count) {
+int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
   while(i < count) {
