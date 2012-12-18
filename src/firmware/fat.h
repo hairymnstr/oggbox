@@ -134,7 +134,8 @@ typedef struct {
 } __attribute__((__packed__)) direntS;
 
 typedef struct {
-  char buffer[512];
+  uint8_t   open;
+  char      buffer[512];
   uint32_t  sector;
   uint32_t  cluster;
   uint8_t   sectors_left;
@@ -145,15 +146,6 @@ typedef struct {
   char      filename[8];
   char      extension[3];
   uint8_t   attributes;
-//   uint8_t   reserved;
-//   uint8_t   create_time_fine;
-//   uint16_t  create_time;
-//   uint16_t  create_date;
-//   uint16_t  access_date;
-//   uint16_t  high_first_cluster;
-//   uint16_t  modified_time;
-//   uint16_t  modified_date;
-//   uint16_t  first_cluster;
   uint32_t  size;
   uint32_t  full_first_cluster;
   uint32_t  entry_sector;
@@ -165,24 +157,6 @@ typedef struct {
   time_t    accessed;
 } FileS;
 
-// #define MEDIA_BUFFER_SIZE 2048
-// 
-// typedef struct {
-//   char buffer[2][MEDIA_BUFFER_SIZE];
-//   char meta_buffer[512];
-//   int  meta_block;
-//   int  cluster;
-//   unsigned char active_buffer;
-//   int  block;
-//   int  block_count;
-//   int  error;
-//   uint32_t buffer_ready[2];
-//   unsigned char near_end;
-//   unsigned char nearly_near_end;
-//   int  file_end;
-//   unsigned int file_len;
-// } MediaFileS;
-
 int fat_mount(blockno_t, uint8_t);
 
 // int sdfat_init();
@@ -190,7 +164,8 @@ int fat_mount(blockno_t, uint8_t);
 int sdfat_lookup_path(int, const char *);
 int fat_open(const char *, int);
 int fat_close(int);
-int sdfat_read(int, void *, int);
+int fat_read(int, void *, size_t);
+int fat_write(int, const void *, size_t);
 int sdfat_lseek(int, int, int);
 int sdfat_get_next_dirent(int, struct dirent *);
 int sdfat_stat(int fd, struct stat *st);

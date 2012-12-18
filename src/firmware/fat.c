@@ -647,7 +647,7 @@ int fat_close(int fn) {
   return 0;
 }
 
-int sdfat_read(int fd, void *buffer, int count) {
+int fat_read(int fd, void *buffer, size_t count) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
   while(i < count) {
