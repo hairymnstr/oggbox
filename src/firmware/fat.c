@@ -390,7 +390,7 @@ int fat_get_free_cluster(int fd) {
 // }
 
 /* get the first sector of a given cluster */
-int sdfat_select_cluster(int fd, uint32_t cluster) {
+int fat_select_cluster(int fd, uint32_t cluster) {
 
   file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
   file_num[fd].sectors_left = fatfs.sectors_per_cluster - 1;
@@ -463,7 +463,7 @@ int sdfat_next_cluster(int fd, int *rerrno) {
 }
 
 /* get the next sector in the current file. */
-int sdfat_next_sector(int fd) {
+int fat_next_sector(int fd) {
   int c;
   int rerrno;
   /* if the current sector was written write to disc */
@@ -480,7 +480,7 @@ int sdfat_next_sector(int fd) {
     c = sdfat_next_cluster(fd, &rerrno);
     if(c > -1) {
       file_num[fd].file_sector++;
-      return sdfat_select_cluster(fd, sdfat_next_cluster(fd, &rerrno));
+      return fat_select_cluster(fd, sdfat_next_cluster(fd, &rerrno));
     } else {
       return -1;
     }
@@ -490,7 +490,18 @@ int sdfat_next_sector(int fd) {
 /* Function to save file meta-info, (size modified date etc.) */
 int fat_flush_fileinfo(int fd) {
   direntS de;
+  direntS *de2;
+  int i;
+  uint32_t temp_sectors_left;
+  uint32_t temp_file_sector;
+  uint32_t temp_cluster;
+  uint32_t temp_sector;
+  uint32_t temp_cursor;
   
+  if(file_num[fd].full_first_cluster == fatfs.root_cluster) {
+    // do nothing to try and update meta info on the root directory
+    return 0;
+  }
   memcpy(de.filename, file_num[fd].filename, 8);
   memcpy(de.extension, file_num[fd].extension, 3);
   de.attributes = file_num[fd].attributes;
@@ -510,9 +521,50 @@ int fat_flush_fileinfo(int fd) {
   if(fat_flush(fd)) {
     return -1;
   }
-  /* read the directory entry for this file */
-  if(block_read(file_num[fd].entry_sector, file_num[fd].buffer)) {
-    return -1;
+  if(file_num[fd].entry_sector == 0) {
+    /* this is a new file that's never been written to disc */
+    // save the tracking info for this file, we'll need to seek through the parent with
+    // this file descriptor
+    temp_sectors_left = file_num[fd].sectors_left;
+    temp_file_sector = file_num[fd].file_sector;
+    temp_cursor = file_num[fd].cursor;
+    temp_sector = file_num[fd].sector;
+    temp_cluster = file_num[fd].cluster;
+    
+    fat_select_cluster(fd, file_num[fd].parent_cluster);
+    
+    // find the first empty file location in the directory
+    while(1) {
+      // 16 entries per disc block
+      for(i=0;i<16;i++) {
+        de2 = (direntS *)(file_num[fd].buffer + file_num[fd].cursor);
+        if(de2->filename[0] == 0) {
+          // this is an empty entry
+          break;
+        }
+      }
+      if(i < 16) {
+        // we found an empty in this block
+        break;
+      }
+      fat_next_sector(fd);
+    }
+    
+    // save the entry_sector and entry_number
+    file_num[fd].entry_sector = file_num[fd].sector;
+    file_num[fd].entry_number = i;
+    
+    // restore the file tracking info
+    file_num[fd].sectors_left = temp_sectors_left;
+    file_num[fd].file_sector = temp_file_sector;
+    file_num[fd].cursor = temp_cursor;
+    file_num[fd].sector = temp_sector;
+    file_num[fd].cluster = temp_cluster;
+  } else {
+    /* read the directory entry for this file */
+    if(block_read(file_num[fd].entry_sector, file_num[fd].buffer)) {
+      return -1;
+    }
   }
   /* copy the new entry over the old */
   memcpy(&file_num[fd].buffer[file_num[fd].entry_number * 32], &de, 32);
@@ -529,7 +581,7 @@ int fat_flush_fileinfo(int fd) {
   return 0;
 }
 
-int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
+int fat_lookup_path(int fd, const char *path, int *rerrno) {
   char dosname[12];
   char isdir;
   int i;
@@ -549,7 +601,7 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
   }
 
   /* select root directory */
-  sdfat_select_cluster(fd, fatfs.root_cluster);
+  fat_select_cluster(fd, fatfs.root_cluster);
 
   path_pointer++;
 
@@ -564,7 +616,7 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
     file_num[fd].accessed = 0;
     file_num[fd].modified = 0;
     file_num[fd].created = 0;
-    sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
+    fat_select_cluster(fd, file_num[fd].full_first_cluster);
     return 0;
   }
 
@@ -584,7 +636,9 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
 //         printf("%s %d\r\n", (char *)(file_num[fd].buffer + (i * 32)), i);
       }
       if(i == 16) {
-        if(sdfat_next_sector(fd) != 0) {
+        if(fat_next_sector(fd) != 0) {
+          memcpy(file_num[fd].filename, dosname, 8);
+          memcpy(file_num[fd].extension, dosname+8, 3);
           (*rerrno) = ENOENT;
           return -1;
         }
@@ -601,15 +655,23 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
       path_pointer++;
       if(fatfs.type == PART_TYPE_FAT16) {
         if(de->first_cluster == 0) {
-          sdfat_select_cluster(fd, fatfs.root_cluster);
+          file_num[fd].parent_cluster = fatfs.root_cluster;
+          file_num[fd].parent_attributes = FAT_ATT_SUBDIR;
+          fat_select_cluster(fd, fatfs.root_cluster);
         } else {
-          sdfat_select_cluster(fd, de->first_cluster);
+          file_num[fd].parent_cluster = de->first_cluster;
+          file_num[fd].parent_attributes = de->attributes;
+          fat_select_cluster(fd, de->first_cluster);
         }
       } else {
         if(de->first_cluster + (de->high_first_cluster << 16) == 0) {
-          sdfat_select_cluster(fd, fatfs.root_cluster);
+          file_num[fd].parent_cluster = fatfs.root_cluster;
+          file_num[fd].parent_attributes = FAT_ATT_SUBDIR;
+          fat_select_cluster(fd, fatfs.root_cluster);
         } else {
-          sdfat_select_cluster(fd, de->first_cluster + (de->high_first_cluster << 16));
+          file_num[fd].parent_cluster = de->first_cluster + (de->high_first_cluster << 16);
+          file_num[fd].parent_attributes = de->attributes;
+          fat_select_cluster(fd, de->first_cluster + (de->high_first_cluster << 16));
         }
       }
     } else if((doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer+1]) != 0)) {
@@ -642,7 +704,7 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
       file_num[fd].created = fat_to_unix_date(de->create_date) + fat_to_unix_time(de->create_time) + de->create_time_fine;
       file_num[fd].modified = fat_to_unix_date(de->modified_date) + fat_to_unix_time(de->modified_date);
       file_num[fd].accessed = fat_to_unix_date(de->access_date);
-      sdfat_select_cluster(fd, file_num[fd].full_first_cluster);
+      fat_select_cluster(fd, file_num[fd].full_first_cluster);
       break;
     }
   }
@@ -654,7 +716,7 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
  * callable file access routines
  */
 
-int fat_open(const char *name, int mode, int *rerrno) {
+int fat_open(const char *name, int flags, int mode, int *rerrno) {
   int i;
   int8_t fd;
   (*rerrno) = 0;
@@ -665,43 +727,74 @@ int fat_open(const char *name, int mode, int *rerrno) {
     (*rerrno) = ENFILE;
     return -1;   /* too many open files */
   }
-  if((mode & O_RDWR)) {
+  if((flags & O_RDWR)) {
     file_num[fd].flags |= (FAT_FLAG_READ | FAT_FLAG_WRITE);
   } else {
-    if((mode & O_WRONLY) == 0) {
+    if((flags & O_WRONLY) == 0) {
       file_num[fd].flags |= FAT_FLAG_READ;
     } else {
       file_num[fd].flags |= FAT_FLAG_WRITE;
     }
   }
   
-  if(mode & O_APPEND) {
+  if(flags & O_APPEND) {
     file_num[fd].flags |= FAT_FLAG_APPEND;
   }
 //   printf("Lookup path\n");
-  i = sdfat_lookup_path(fd, name, rerrno);
+  i = fat_lookup_path(fd, name, rerrno);
   if((i == -1) && ((*rerrno) == ENOENT)) {
     /* file doesn't exist */
-    if((mode & (O_CREAT)) == 0) {
+    if((flags & (O_CREAT)) == 0) {
       /* tried to open a non-existent file with no create */
       file_num[fd].flags = 0;
       (*rerrno) = ENOENT;
       return -1;
     } else {
       /* opening a new file for writing */
-      /* TODO */
-      file_num[fd].flags = 0;
-      return -99;
+      /* only create files in directories that aren't read only */
+      if(fatfs.read_only) {
+        file_num[fd].flags = 0;
+        (*rerrno) = EROFS;
+        return -1;
+      }
+      if(file_num[fd].parent_attributes & FAT_ATT_RO) {
+        file_num[fd].flags = 0;
+        (*rerrno) = EACCES;
+        return -1;
+      }
+      /* create an empty file structure ready for use */
+      file_num[fd].sector = 0;
+      file_num[fd].cluster = 0;
+      file_num[fd].sectors_left = 0;
+      file_num[fd].cursor = 0;
+      file_num[fd].error = 0;
+      if(mode & S_IWUSR) {
+        file_num[fd].attributes = 0;
+      } else {
+        file_num[fd].attributes = FAT_ATT_RO;
+      }
+      file_num[fd].size = 0;
+      file_num[fd].full_first_cluster = 0;
+      file_num[fd].entry_sector = 0;
+      file_num[fd].entry_number = 0;
+      file_num[fd].file_sector = 0;
+      file_num[fd].created = time(NULL);
+      file_num[fd].modified = 0;
+      file_num[fd].accessed = 0;
+      
+      memset(file_num[fd].buffer, 0, 512);
+      
+      return fd;
     }
   } else if(i == 0) {
     /* file does exist */
-    if(mode & (O_CREAT | O_EXCL)) {
+    if(flags & (O_CREAT | O_EXCL)) {
       /* tried to force creation of an existing file */
       file_num[fd].flags = 0;
       (*rerrno) = EEXIST;
       return -1;
     } else {
-      if((mode & (O_WRONLY | O_RDWR)) == 0) {
+      if((flags & (O_WRONLY | O_RDWR)) == 0) {
         /* read existing file */
         file_num[fd].file_sector = 0;
         return fd;
@@ -725,7 +818,7 @@ int fat_open(const char *name, int mode, int *rerrno) {
           (*rerrno) = EISDIR;
           return -1;
         }
-        if(mode & O_TRUNC) {
+        if(flags & O_TRUNC) {
           /* Need to truncate the file to zero length */
           // TODO
           file_num[fd].flags = 0;
@@ -785,7 +878,7 @@ int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
     *bt++ = *(uint8_t *)(file_num[fd].buffer + file_num[fd].cursor);
     file_num[fd].cursor++;
     if(file_num[fd].cursor == 512) {
-      sdfat_next_sector(fd);
+      fat_next_sector(fd);
     }
     i++;
   }
@@ -818,7 +911,7 @@ int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
     file_num[fd].buffer[file_num[fd].cursor] = *bt++;
     file_num[fd].cursor++;
     if(file_num[fd].cursor == 512) {
-      sdfat_next_sector(fd);
+      fat_next_sector(fd);
     }
     i++;
   }
@@ -939,7 +1032,7 @@ int fat_get_next_dirent(int fd, struct dirent *out_de) {
   while(1) {
     /* otherwise look for the next entry */
     if(file_num[fd].cursor + 32 == 512) {
-      if(sdfat_next_sector(fd) == -1) {
+      if(fat_next_sector(fd) == -1) {
         return -1;  /* there are no more sectors allocated to this directory */
       }
     } else {

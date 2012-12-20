@@ -111,12 +111,13 @@ int _lseek(int fd, int ptr, int dir) {
   return sdfat_lseek(fd - FIRST_DISC_FILENO, ptr, dir);
 }
 
-int _open_r(struct _reent *ptr, const char *name, int mode) {
+int _open_r(struct _reent *ptr, const char *name, int flags, int mode) {
   int i;
-  i = sdfat_open(name, mode);
+  int rerrno;
+  i = sdfat_open(name, flags, mode, &rerrno);
 
   if(i<0) {
-    ptr->_errno = -i;
+    ptr->_errno = rerrno;
     i = -1;
   } else {
     i += FIRST_DISC_FILENO;     /* otherwise we'd be returning STD* filenos */

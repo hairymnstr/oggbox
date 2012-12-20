@@ -90,7 +90,7 @@ int test_open(int p) {
   
   for(i=0;i<cases;i++) {
     printf("[%4d] Testing %s", p++, desc[i]);
-    v = fat_open(filename[i], flags[i], &rerrno);
+    v = fat_open(filename[i], flags[i], 0, &rerrno);
     if(rerrno == result[i]) {
       printf("  [ ok ]\n");
     } else {

@@ -146,6 +146,8 @@ typedef struct {
   uint32_t  full_first_cluster;
   uint32_t  entry_sector;
   uint8_t   entry_number;
+  uint32_t  parent_cluster;
+  uint8_t   parent_attributes;
   uint32_t  file_sector;
   time_t    created;
   time_t    modified;
@@ -164,7 +166,7 @@ typedef struct {
 // int sdfat_next_sector(int fd);
 
 int fat_mount(blockno_t, uint8_t);
-int fat_open(const char *, int, int *);
+int fat_open(const char *, int, int, int *);
 int fat_close(int, int *);
 int fat_read(int, void *, size_t, int *);
 int fat_write(int, const void *, size_t, int *);
