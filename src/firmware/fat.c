@@ -98,6 +98,38 @@ uint16_t fat_from_unix_date(time_t seconds) {
   return fatdate;
 }
 
+/*
+ * fat_update_atime - Updates the access date on the selected file
+ * 
+ * since FAT only stores an access date it's highly likely this won't change from the last
+ * time it was accessed, a test is made, if this is the case, the fs_dirty flag is not set
+ * so no flush is required on the meta info for this file.
+ */
+int fat_update_atime(int fd) {
+  uint16_t new_date, old_date;
+  new_date = fat_from_unix_date(time(NULL));
+  old_date = fat_from_unix_date(file_num[fd].accessed);
+  
+  if(old_date != new_date) {
+    file_num[fd].accessed = time(NULL);
+    file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
+  }
+  
+  return 0;
+}
+
+/*
+ * fat_update_mtime - Updates the modified time and date on the selected file
+ * 
+ * Since this is tracked to the nearest 2 seconds it is assumed there will always be an update
+ * so to reduce overheads, the date is just set and the fs_dirty flag set.
+ */
+int fat_update_mtime(int fd) {
+  file_num[fd].modified = time(NULL);
+  file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
+  return 0;
+}
+
 /* sdfat_get_next_file - returns the next free file descriptor or -1 if none */
 int8_t fat_get_next_file() {
   int j;
@@ -117,6 +149,7 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
   boot_sector_fat16 *boot16;
   boot_sector_fat32 *boot32;
   
+  fatfs.read_only = block_get_device_read_only();
   block_read(part_start, (void *)buffer);
   if(filesystem == PART_TYPE_FAT16) {
     fatfs.fat_entry_len = 2;
@@ -345,16 +378,16 @@ int fat_get_free_cluster(int fd) {
   return 0;     /* no clusters found, should raise ENOSPC */
 }
 
-int sdfat_select_sector(int fd, blockno_t sector) {
-  if(fat_flush(fd)) {
-    return -1;
-  }
-  file_num[fd].sector = sector;
-  file_num[fd].sectors_left = (sector - fatfs.cluster0) % fatfs.sectors_per_cluster;
-  file_num[fd].cluster = (sector - fatfs.cluster0) / fatfs.sectors_per_cluster;
-  file_num[fd].cursor = 0;
-  return block_read(file_num[fd].sector, file_num[fd].buffer);
-}
+// int sdfat_select_sector(int fd, blockno_t sector) {
+//   if(fat_flush(fd)) {
+//     return -1;
+//   }
+//   file_num[fd].sector = sector;
+//   file_num[fd].sectors_left = (sector - fatfs.cluster0) % fatfs.sectors_per_cluster;
+//   file_num[fd].cluster = (sector - fatfs.cluster0) / fatfs.sectors_per_cluster;
+//   file_num[fd].cursor = 0;
+//   return block_read(file_num[fd].sector, file_num[fd].buffer);
+// }
 
 /* get the first sector of a given cluster */
 int sdfat_select_cluster(int fd, uint32_t cluster) {
@@ -496,7 +529,7 @@ int fat_flush_fileinfo(int fd) {
   return 0;
 }
 
-int sdfat_lookup_path(int fd, const char *path) {
+int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
   char dosname[12];
   char isdir;
   int i;
@@ -504,7 +537,8 @@ int sdfat_lookup_path(int fd, const char *path) {
   direntS *de;
 
   if(path[0] != '/') {
-    return -2;                                /* bad path, we have no cwd */
+    (*rerrno) = ENOENT;
+    return -1;                                /* bad path, we have no cwd */
   }
 
   /* select root directory */
@@ -529,6 +563,7 @@ int sdfat_lookup_path(int fd, const char *path) {
 
   while(1) {
     if(make_dos_name(dosname, path, &path_pointer)) {
+      (*rerrno) = ENOENT;
       return -1;  /* invalid path name */
     }
 //     printf("%s\r\n", dosname);
@@ -543,7 +578,8 @@ int sdfat_lookup_path(int fd, const char *path) {
       }
       if(i == 16) {
         if(sdfat_next_sector(fd) != 0) {
-          return -ENOENT;
+          (*rerrno) = ENOENT;
+          return -1;
         }
       } else {
         break;
@@ -571,7 +607,8 @@ int sdfat_lookup_path(int fd, const char *path) {
       }
     } else if((doschar(path[path_pointer]) == '/') && (doschar(path[path_pointer+1]) != 0)) {
       /* path end not reached but this is not a directory */
-      return -ENOTDIR;
+      (*rerrno) = ENOTDIR;
+      return -1;
     } else {
       /* otherwise, setup the fd */
       file_num[fd].error = 0;
@@ -610,13 +647,16 @@ int sdfat_lookup_path(int fd, const char *path) {
  * callable file access routines
  */
 
-int fat_open(const char *name, int mode) {
+int fat_open(const char *name, int mode, int *rerrno) {
   int i;
   int8_t fd;
-
+  (*rerrno) = 0;
+  
+//   printf("fat_open(%s, %x)\n", name, mode);
   fd = fat_get_next_file();
   if(fd < 0) {
-    return -EMFILE;   /* too many open files */
+    (*rerrno) = ENFILE;
+    return -1;   /* too many open files */
   }
   if((mode & O_RDWR)) {
     file_num[fd].flags |= (FAT_FLAG_READ | FAT_FLAG_WRITE);
@@ -631,13 +671,15 @@ int fat_open(const char *name, int mode) {
   if(mode & O_APPEND) {
     file_num[fd].flags |= FAT_FLAG_APPEND;
   }
-  i = sdfat_lookup_path(fd, name);
-  if(i == -ENOENT) {
+//   printf("Lookup path\n");
+  i = sdfat_lookup_path(fd, name, rerrno);
+  if((i == -1) && ((*rerrno) == ENOENT)) {
     /* file doesn't exist */
     if((mode & (O_CREAT)) == 0) {
       /* tried to open a non-existent file with no create */
       file_num[fd].flags = 0;
-      return -ENOENT;
+      (*rerrno) = ENOENT;
+      return -1;
     } else {
       /* opening a new file for writing */
       /* TODO */
@@ -649,7 +691,8 @@ int fat_open(const char *name, int mode) {
     if(mode & (O_CREAT | O_EXCL)) {
       /* tried to force creation of an existing file */
       file_num[fd].flags = 0;
-      return -EEXIST;
+      (*rerrno) = EEXIST;
+      return -1;
     } else {
       if((mode & (O_WRONLY | O_RDWR)) == 0) {
         /* read existing file */
@@ -660,17 +703,20 @@ int fat_open(const char *name, int mode) {
         if(fatfs.read_only) {
           /* requested write on read only filesystem */
           file_num[fd].flags = 0;
-          return -EROFS;
+          (*rerrno) = EROFS;
+          return -1;
         }
         if(file_num[fd].attributes & FAT_ATT_RO) {
           /* The file is read-only refuse permission */
           file_num[fd].flags = 0;
-          return -EACCES;
+          (*rerrno) = EACCES;
+          return -1;
         }
         if(file_num[fd].attributes & FAT_ATT_SUBDIR) {
           /* Tried to open a directory for writing */
           file_num[fd].flags = 0;
-          return -EISDIR;
+          (*rerrno) = EISDIR;
+          return -1;
         }
         if(mode & O_TRUNC) {
           /* Need to truncate the file to zero length */
@@ -683,11 +729,12 @@ int fat_open(const char *name, int mode) {
       }
     }
   } else {
-    return i;
+    return -1;
   }
 }
 
 int fat_close(int fd, int *rerrno) {
+  (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
     return -1;
@@ -715,6 +762,7 @@ int fat_close(int fd, int *rerrno) {
 int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
+  (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
     return -1;
@@ -734,12 +782,16 @@ int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
     }
     i++;
   }
+  if(i > 0) {
+    fat_update_atime(fd);
+  }
   return i;
 }
 
 int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
+  (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
     return -1;
@@ -747,6 +799,9 @@ int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
   if((~file_num[fd].flags) & (FAT_FLAG_OPEN | FAT_FLAG_WRITE)) {
     (*rerrno) = EBADF;
     return -1;
+  }
+  if(file_num[fd].flags & FAT_FLAG_APPEND) {
+    fat_lseek(fd, 0, SEEK_END, rerrno);
   }
   while(i < count) {
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) == file_num[fd].size) {
@@ -760,10 +815,14 @@ int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
     }
     i++;
   }
+  if(i > 0) {
+    fat_update_mtime(fd);
+  }
   return i;
 }
 
 int fat_fstat(int fd, struct stat *st, int *rerrno) {
+  (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
     return -1;
@@ -799,6 +858,7 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
   int new_sec;
   int i;
   int file_cluster;
+  (*rerrno) = 0;
 
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;

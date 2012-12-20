@@ -163,12 +163,12 @@ typedef struct {
 #define FAT_FLAG_DIRTY 16
 #define FAT_FLAG_FS_DIRTY 32
 
-int sdfat_lookup_path(int, const char *);
+// int sdfat_lookup_path(int, const char *);
 int sdfat_next_sector(int fd);
 
 
 int fat_mount(blockno_t, uint8_t);
-int fat_open(const char *, int);
+int fat_open(const char *, int, int *);
 int fat_close(int, int *);
 int fat_read(int, void *, size_t, int *);
 int fat_write(int, const void *, size_t, int *);

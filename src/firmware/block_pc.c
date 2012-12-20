@@ -8,6 +8,7 @@
 
 uint64_t block_fs_size=0;
 uint8_t *blocks = NULL;
+int block_ro;
 
 int block_init() {
   FILE *block_fp;
@@ -62,6 +63,18 @@ int block_get_size() {
   return BLOCK_SIZE;
 }
 
+int block_get_device_read_only() {
+  return block_ro;
+}
+
+
+void block_pc_set_ro() {
+  block_ro = -1;
+}
+
+void block_pc_set_rw() {
+  block_ro = 0;
+}
 
 int block_pc_snapshot(const char *filename, uint64_t start, uint64_t len) {
   FILE *fp;

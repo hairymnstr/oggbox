@@ -71,18 +71,18 @@ int test_open(int p) {
                        O_RDWR,
                        O_RDONLY,
   };
-  const int result[] = {-EACCES,
-                        -EACCES,
+  const int result[] = {EACCES,
+                        EACCES,
                         0,
-                        -EISDIR,
-                        -EISDIR,
+                        EISDIR,
+                        EISDIR,
                         0,
-                        -ENOENT,
-                        -ENOENT,
-                        -ENOENT,
-                        -ENOTDIR,
-                        -ENOTDIR,
-                        -ENOTDIR,
+                        ENOENT,
+                        ENOENT,
+                        ENOENT,
+                        ENOTDIR,
+                        ENOTDIR,
+                        ENOTDIR,
   };
   const int cases = 12;
   
@@ -90,11 +90,11 @@ int test_open(int p) {
   
   for(i=0;i<cases;i++) {
     printf("[%4d] Testing %s", p++, desc[i]);
-    v = fat_open(filename[i], flags[i]);
-    if(v == result[i]) {
+    v = fat_open(filename[i], flags[i], &rerrno);
+    if(rerrno == result[i]) {
       printf("  [ ok ]\n");
     } else {
-      printf("  [fail]\n  expected (%d) %s\n  got (%d) %s\n", result[i], strerror(-result[i]), v, strerror(-v));
+      printf("  [fail]\n  expected (%d) %s\n  got (%d) %s\n", result[i], strerror(result[i]), rerrno, strerror(-rerrno));
     }
     if(v > -1) {
       fat_close(v, &rerrno);
