@@ -378,6 +378,46 @@ int fat_get_free_cluster(int fd) {
   return 0;     /* no clusters found, should raise ENOSPC */
 }
 
+/*
+ * fat_free_clusters - starts at given cluster and marks all as free until an
+ *                     end of chain marker is found
+ */
+int fat_free_clusters(int fd, uint32_t cluster) {
+  int estart;
+  uint32_t j;
+  blockno_t current_block = MAX_BLOCK;
+  
+  while(1) {
+    if(fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len) / 512) != current_block) {
+      if(current_block != MAX_BLOCK) {
+        block_write(current_block, file_num[fd].buffer);
+      }
+      if(block_read(fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len) / 512), file_num[fd].buffer)) {
+        return -1;
+      }
+      current_block = fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len)/512);
+    }
+    estart = (cluster * fatfs.fat_entry_len) & 0x1ff;
+    j = file_num[fd].buffer[estart];
+    file_num[fd].buffer[estart] = 0;
+    j += file_num[fd].buffer[estart + 1] << 8;
+    file_num[fd].buffer[estart+1] = 0;
+    if(fatfs.type == PART_TYPE_FAT32) {
+      j += file_num[fd].buffer[estart + 2];
+      file_num[fd].buffer[estart+2] = 0;
+      j += file_num[fd].buffer[estart + 3];
+      file_num[fd].buffer[estart+3] = 0;
+    }
+    cluster = j;
+    if(cluster >= fatfs.end_cluster_marker) {
+      break;
+    }
+  }
+  block_write(current_block, file_num[fd].buffer);
+  
+  return 0;
+}
+
 // int sdfat_select_sector(int fd, blockno_t sector) {
 //   if(fat_flush(fd)) {
 //     return -1;
@@ -784,6 +824,7 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
       
       memset(file_num[fd].buffer, 0, 512);
       
+      file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
       return fd;
     }
   } else if(i == 0) {
@@ -820,9 +861,16 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
         }
         if(flags & O_TRUNC) {
           /* Need to truncate the file to zero length */
-          // TODO
-          file_num[fd].flags = 0;
-          return -99;
+          fat_free_clusters(fd, file_num[fd].full_first_cluster);
+          file_num[fd].size = 0;
+          file_num[fd].full_first_cluster = 0;
+          file_num[fd].sector = 0;
+          file_num[fd].cluster = 0;
+          file_num[fd].sectors_left = 0;
+          file_num[fd].file_sector = 0;
+          file_num[fd].created = time(NULL);
+          file_num[fd].modified = time(NULL);
+          file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
         }
         file_num[fd].file_sector = 0;
         return fd;
