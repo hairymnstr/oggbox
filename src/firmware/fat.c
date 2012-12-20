@@ -292,8 +292,6 @@ int fat_get_free_cluster() {
   blockno_t i;
   int j;
   uint32_t e;
-  printf("Active FAT start: %d\n", fatfs.active_fat_start);
-  printf("Sectors per FAT: %d\n", fatfs.sectors_per_fat);
   for(i=fatfs.active_fat_start;i<fatfs.active_fat_start + fatfs.sectors_per_fat;i++) {
     if(block_read(i, fatfs.sysbuf)) {
       return 0xFFFFFFFF;
@@ -312,13 +310,13 @@ int fat_get_free_cluster() {
         /* this is a free cluster */
         /* first, mark it as the end of the chain */
         if(fatfs.type == PART_TYPE_FAT16) {
-          fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xFF;
-          fatfs.sysbuf[j*fatfs.fat_entry_len+1] = 0x8F;
+          fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xF8;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+1] = 0xFF;
         } else {
-          fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xFF;
+          fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xF8;
           fatfs.sysbuf[j*fatfs.fat_entry_len+1] = 0xFF;
           fatfs.sysbuf[j*fatfs.fat_entry_len+2] = 0xFF;
-          fatfs.sysbuf[j*fatfs.fat_entry_len+3] = 0x8F;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+3] = 0xFF;
         }
         if(block_write(i, fatfs.sysbuf)) {
           return 0xFFFFFFFF;
@@ -385,6 +383,7 @@ int fat_flush(int fd) {
         return -1;
       } else {
         file_num[fd].cluster = cluster;
+        file_num[fd].full_first_cluster = cluster;
         file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
         file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
       }
@@ -553,7 +552,7 @@ int fat_flush_fileinfo(int fd) {
     while(1) {
       // 16 entries per disc block
       for(i=0;i<16;i++) {
-        de2 = (direntS *)(file_num[fd].buffer + file_num[fd].cursor);
+        de2 = (direntS *)(file_num[fd].buffer + i * 32);
         if(de2->filename[0] == 0) {
           // this is an empty entry
           break;
@@ -612,7 +611,7 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
   }
 
   if(path[0] != '/') {
-    (*rerrno) = ENOENT;
+    (*rerrno) = ENAMETOOLONG;
     return -1;                                /* bad path, we have no cwd */
   }
 
@@ -636,6 +635,8 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
     return 0;
   }
 
+  file_num[fd].parent_cluster = fatfs.root_cluster;
+  file_num[fd].parent_attributes = FAT_ATT_SUBDIR;
   while(1) {
     if(make_dos_name(dosname, path, &path_pointer)) {
       (*rerrno) = ENOENT;
@@ -738,6 +739,7 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
   boot_sector_fat32 *boot32;
   
   fatfs.read_only = block_get_device_read_only();
+  fatfs.type = filesystem;
   block_read(part_start, fatfs.sysbuf);
   if(filesystem == PART_TYPE_FAT16) {
     fatfs.fat_entry_len = 2;
@@ -773,6 +775,21 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
   } else {
     return -1;
   }
+  
+#ifdef DEBUG
+  printf("read_only: %d\n", fatfs.read_only);
+  printf("fat_entry_len: %d\n", fatfs.fat_entry_len);
+  printf("end_cluster_marker: %d\n", fatfs.end_cluster_marker);
+  printf("sectors_per_cluster: %d\n", fatfs.sectors_per_cluster);
+  printf("cluster0: %d\n", fatfs.cluster0);
+  printf("active_fat_start: %d\n", fatfs.active_fat_start);
+  printf("sectors_per_fat: %d\n", fatfs.sectors_per_fat);
+  printf("root_len: %d\n", fatfs.root_len);
+  printf("root_start: %d\n", fatfs.root_start);
+  printf("root_cluster: %d\n", fatfs.root_cluster);
+  printf("type: %d\n", fatfs.type);
+  printf("part_start: %d\n", fatfs.part_start);
+#endif
   
   return 0;
 }
@@ -914,14 +931,12 @@ int fat_close(int fd, int *rerrno) {
   }
   if(file_num[fd].flags & FAT_FLAG_DIRTY) {
     if(fat_flush(fd)) {
-      printf("FAT Flush failed.\n");
       (*rerrno) = EIO;
       return -1;
     }
   }
   if(file_num[fd].flags & FAT_FLAG_FS_DIRTY) {
     if(fat_flush_fileinfo(fd)) {
-      printf("FAT Flush Fileinfo failed.\n");
       (*rerrno) = EIO;
       return -1;
     }

@@ -123,6 +123,7 @@ typedef struct {
   uint8_t   reserved;
   uint8_t   create_time_fine;
   uint16_t  create_time;
+  
   uint16_t  create_date;
   uint16_t  access_date;
   uint16_t  high_first_cluster;

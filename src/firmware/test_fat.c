@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
   int fd;
   
   printf("Open\n");
-  fd = fat_open("newfile.txt", O_WRONLY | O_CREAT, 0777, &rerrno);
+  fd = fat_open("/newfile.txt", O_WRONLY | O_CREAT, 0777, &rerrno);
   printf("fd = %d, errno=%d (%s)\n", fd, rerrno, strerror(rerrno));
   if(fd > -1) {
     printf("Write\n");
