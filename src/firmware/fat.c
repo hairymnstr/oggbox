@@ -143,50 +143,6 @@ int8_t fat_get_next_file() {
   return -1;
 }
 
-int fat_mount(blockno_t part_start, uint8_t filesystem) {
-  int i;
-  uint8_t buffer[512];
-  boot_sector_fat16 *boot16;
-  boot_sector_fat32 *boot32;
-  
-  fatfs.read_only = block_get_device_read_only();
-  block_read(part_start, (void *)buffer);
-  if(filesystem == PART_TYPE_FAT16) {
-    fatfs.fat_entry_len = 2;
-    fatfs.end_cluster_marker = 0xFFF0;
-    boot16 = (boot_sector_fat16 *)buffer;
-    fatfs.sectors_per_cluster = boot16->cluster_size;
-    fatfs.root_len = boot16->root_entries;
-    i = part_start;
-    i += boot16->reserved_sectors;
-    fatfs.active_fat_start = i;
-    i += (boot16->sectors_per_fat * boot16->num_fats);
-    fatfs.root_start = i;
-    i += (boot16->root_entries * 32) / 512;
-    i -= (boot16->cluster_size * 2);
-    fatfs.cluster0 = i;
-    fatfs.root_cluster = 1;
-    fatfs.type = PART_TYPE_FAT16;
-    fatfs.part_start = part_start;
-  } else if(filesystem == PART_TYPE_FAT32) {
-    fatfs.fat_entry_len = 4;
-    fatfs.end_cluster_marker = 0xFFFFFFF0;
-    boot32 = (boot_sector_fat32 *)buffer;
-    fatfs.sectors_per_cluster = boot32->cluster_size;
-    i = part_start;
-    i += boot32->reserved_sectors;
-    fatfs.active_fat_start = i;
-    i += boot32->sectors_per_fat * boot32->num_fats;
-    i -= boot32->cluster_size * 2;
-    fatfs.cluster0 = i;
-    fatfs.root_cluster = boot32->root_start;
-  } else {
-    return -1;
-  }
-  
-  return 0;
-}
-
 /*
   doschar - returns a dos file entry compatible version of character c
             0 indicates c was 0 (i.e. end of string)
@@ -327,21 +283,7 @@ int fatname_to_str(char *output, char *input) {
   return 0;   /* and return */
 }
 
-/* write a sector back to disc */
-int fat_flush(int fd) {
-  /* only write to disk if we need to */
-  if(file_num[fd].flags & FAT_FLAG_DIRTY) {
-    if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
-      /* write failed, don't clear the dirty flag */
-      return -1;
-    }
-    /* just clear this flag so this isn't called every time from now on */
-    file_num[fd].flags &= ~FAT_FLAG_DIRTY;
-  }
-  return 0;
-}
-
-int fat_get_free_cluster(int fd) {
+int fat_get_free_cluster() {
   blockno_t i;
   int j;
   uint32_t e;
@@ -376,6 +318,26 @@ int fat_get_free_cluster(int fd) {
     }
   }
   return 0;     /* no clusters found, should raise ENOSPC */
+}
+
+/* write a sector back to disc */
+int fat_flush(int fd) {
+  /* only write to disk if we need to */
+  if(file_num[fd].flags & FAT_FLAG_DIRTY) {
+    if(file_num[fd].sector == 0) {
+      /* this is a new file that's never been saved before, it needs a new cluster
+       * assigned to it, the data stored, then the meta info flushed */
+      file_num[fd].cluster = ??;
+      file_num[fd].sector = ??;
+      
+    if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
+      /* write failed, don't clear the dirty flag */
+      return -1;
+    }
+    /* just clear this flag so this isn't called every time from now on */
+    file_num[fd].flags &= ~FAT_FLAG_DIRTY;
+  }
+  return 0;
 }
 
 /*
@@ -755,6 +717,49 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
 /**
  * callable file access routines
  */
+
+int fat_mount(blockno_t part_start, uint8_t filesystem) {
+  int i;
+  boot_sector_fat16 *boot16;
+  boot_sector_fat32 *boot32;
+  
+  fatfs.read_only = block_get_device_read_only();
+  block_read(part_start, fatfs.sysbuf);
+  if(filesystem == PART_TYPE_FAT16) {
+    fatfs.fat_entry_len = 2;
+    fatfs.end_cluster_marker = 0xFFF0;
+    boot16 = (boot_sector_fat16 *)fatfs.sysbuf;
+    fatfs.sectors_per_cluster = boot16->cluster_size;
+    fatfs.root_len = boot16->root_entries;
+    i = part_start;
+    i += boot16->reserved_sectors;
+    fatfs.active_fat_start = i;
+    i += (boot16->sectors_per_fat * boot16->num_fats);
+    fatfs.root_start = i;
+    i += (boot16->root_entries * 32) / 512;
+    i -= (boot16->cluster_size * 2);
+    fatfs.cluster0 = i;
+    fatfs.root_cluster = 1;
+    fatfs.type = PART_TYPE_FAT16;
+    fatfs.part_start = part_start;
+  } else if(filesystem == PART_TYPE_FAT32) {
+    fatfs.fat_entry_len = 4;
+    fatfs.end_cluster_marker = 0xFFFFFFF0;
+    boot32 = (boot_sector_fat32 *)fatfs.sysbuf;
+    fatfs.sectors_per_cluster = boot32->cluster_size;
+    i = part_start;
+    i += boot32->reserved_sectors;
+    fatfs.active_fat_start = i;
+    i += boot32->sectors_per_fat * boot32->num_fats;
+    i -= boot32->cluster_size * 2;
+    fatfs.cluster0 = i;
+    fatfs.root_cluster = boot32->root_start;
+  } else {
+    return -1;
+  }
+  
+  return 0;
+}
 
 int fat_open(const char *name, int flags, int mode, int *rerrno) {
   int i;

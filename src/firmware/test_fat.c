@@ -105,6 +105,7 @@ int test_open(int p) {
 
 int main(int argc, char *argv[]) {
   int p = 0;
+  int rerrno = 0;
 //   int v;
   printf("Running FAT tests...\n\n");
   printf("[%4d] start block device emulation...", p++);
@@ -114,5 +115,21 @@ int main(int argc, char *argv[]) {
   printf("   %d\n", fat_mount(0, PART_TYPE_FAT32));
 
   p = test_open(p);
+
+  int fd;
+  
+  printf("Open\n");
+  fd = fat_open("newfile.txt", O_WRONLY | O_CREAT, 0777, &rerrno);
+  printf("fd = %d, errno=%d (%s)\n", fd, rerrno, strerror(rerrno));
+  if(fd > -1) {
+    printf("Write\n");
+    fat_write(fd, "Hello World\n", 12, &rerrno);
+    printf("errno=%d\n", rerrno);
+    printf("Close\n");
+    fat_close(fd, &rerrno);
+    printf("errno=%d\n", rerrno);
+  }
+  
+  block_pc_snapshot_all("writenfs.img");
   exit(0);
 }
