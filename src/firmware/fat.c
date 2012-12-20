@@ -535,6 +535,13 @@ int sdfat_lookup_path(int fd, const char *path, int *rerrno) {
   int i;
   int path_pointer = 0;
   direntS *de;
+  
+  /* Make sure the file system has all changes flushed before searching it */
+  for(i=0;i<MAX_OPEN_FILES;i++) {
+    if(file_num[i].flags & FAT_FLAG_FS_DIRTY) {
+      fat_flush_fileinfo(i);
+    }
+  }
 
   if(path[0] != '/') {
     (*rerrno) = ENOENT;
@@ -919,7 +926,7 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
   return new_pos;
 }
 
-int sdfat_get_next_dirent(int fd, struct dirent *out_de) {
+int fat_get_next_dirent(int fd, struct dirent *out_de) {
   direntS *de;
 
   de = (direntS *)(file_num[fd].buffer + file_num[fd].cursor);

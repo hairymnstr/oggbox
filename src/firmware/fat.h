@@ -28,9 +28,6 @@
 
 #define MAX_OPEN_FILES 4
 
-/* #define STDIN_FILENO 0 */ /* standard input file descriptor */
-/* #define STDOUT_FILENO 1 */ /* standard output file descriptor */
-/* #define STDERR_FILENO 2 */ /* standard error file descriptor */
 #define FIRST_DISC_FILENO 3 /* first real file (on disc) */
 
 #define FAT_ERROR_CLUSTER 1
@@ -61,17 +58,17 @@ struct fat_info {
 };
 
 typedef struct {
-  uint8_t       jump[3];
-  char          name[8];
-  uint16_t      sector_size;
-  uint8_t       cluster_size;
-  uint16_t      reserved_sectors;
-  uint8_t       num_fats;
-  uint16_t      root_entries;
-  uint16_t      total_sectors;
-  uint8_t       media_descriptor;
-  uint16_t      sectors_per_fat;
-  uint16_t      sectors_per_track;
+  uint8_t   jump[3];
+  char      name[8];
+  uint16_t  sector_size;
+  uint8_t   cluster_size;
+  uint16_t  reserved_sectors;
+  uint8_t   num_fats;
+  uint16_t  root_entries;
+  uint16_t  total_sectors;
+  uint8_t   media_descriptor;
+  uint16_t  sectors_per_fat;
+  uint16_t  sectors_per_track;
   uint16_t  number_of_heads;
   uint32_t  partition_start;
   uint32_t  big_total_sectors;
@@ -79,13 +76,13 @@ typedef struct {
   uint8_t   current_head;
   uint8_t   boot_sig;
   uint32_t  volume_id;
-  char volume_label[11];
-  char fs_label[8];
+  char      volume_label[11];
+  char      fs_label[8];
 } __attribute__((__packed__)) boot_sector_fat16;
 
 typedef struct {
   uint8_t   jump[3];                   /*    0 */
-  char name[8];                   /*    3 */
+  char      name[8];                   /*    3 */
   uint16_t  sector_size;               /*    B */
   uint8_t   cluster_size;              /*    D */
   uint16_t  reserved_sectors;          /*    E */
@@ -104,13 +101,13 @@ typedef struct {
   uint32_t  root_start;                /*   2C */
   uint16_t  fs_info_start;             /*   30 */
   uint16_t  boot_copy;                 /*   32 */
-  char reserved[12];              /*   34 */
+  char      reserved[12];              /*   34 */
   uint8_t   drive_number;              /*   40 */
   uint8_t   current_head;              /*   41 */
   uint8_t   boot_sig;                  /*   42 */
   uint32_t  volume_id;                 /*   43 */
-  char volume_label[11];          /*   47 */
-  char fs_label[8];               /*   52 */
+  char      volume_label[11];          /*   47 */
+  char      fs_label[8];               /*   52 */
 } __attribute__((__packed__)) boot_sector_fat32;
 
 #define FS_INFO_SIG1 0x0000
@@ -119,8 +116,8 @@ typedef struct {
 #define LAST_ALLOCATED 0x01EC
 
 typedef struct {
-  char filename[8];
-  char extension[3];
+  char      filename[8];
+  char      extension[3];
   uint8_t   attributes;
   uint8_t   reserved;
   uint8_t   create_time_fine;
@@ -164,8 +161,7 @@ typedef struct {
 #define FAT_FLAG_FS_DIRTY 32
 
 // int sdfat_lookup_path(int, const char *);
-int sdfat_next_sector(int fd);
-
+// int sdfat_next_sector(int fd);
 
 int fat_mount(blockno_t, uint8_t);
 int fat_open(const char *, int, int *);
@@ -174,6 +170,6 @@ int fat_read(int, void *, size_t, int *);
 int fat_write(int, const void *, size_t, int *);
 int fat_fstat(int, struct stat *, int *);
 int fat_lseek(int, int, int, int *);
-int sdfat_get_next_dirent(int, struct dirent *);
+int fat_get_next_dirent(int, struct dirent *);
 
 #endif
