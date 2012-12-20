@@ -124,10 +124,10 @@ int main(int argc, char *argv[]) {
   if(fd > -1) {
     printf("Write\n");
     fat_write(fd, "Hello World\n", 12, &rerrno);
-    printf("errno=%d\n", rerrno);
+    printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
     printf("Close\n");
     fat_close(fd, &rerrno);
-    printf("errno=%d\n", rerrno);
+    printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
   }
   
   block_pc_snapshot_all("writenfs.img");

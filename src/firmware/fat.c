@@ -38,8 +38,12 @@ struct fat_info fatfs;
 FileS file_num[MAX_OPEN_FILES];
 // uint32_t available_files;
 
+// there's a circular dependency between the two flush functions in certain cases,
+// so we need to prototype one here
+int fat_flush_fileinfo(int fd);
+
 /**
- * low level FAT access routines
+ * Name/Time formatting, doesn't read/write disc
  **/
 
 /* sdfat_to_unix_time - convert a time field from FAT format to unix epoch 
@@ -283,68 +287,54 @@ int fatname_to_str(char *output, char *input) {
   return 0;   /* and return */
 }
 
+/* low level file-system operations */
 int fat_get_free_cluster() {
   blockno_t i;
   int j;
   uint32_t e;
+  printf("Active FAT start: %d\n", fatfs.active_fat_start);
+  printf("Sectors per FAT: %d\n", fatfs.sectors_per_fat);
   for(i=fatfs.active_fat_start;i<fatfs.active_fat_start + fatfs.sectors_per_fat;i++) {
-    if(block_read(i, file_num[fd].buffer)) {
+    if(block_read(i, fatfs.sysbuf)) {
       return 0xFFFFFFFF;
     }
     for(j=0;j<(512/fatfs.fat_entry_len);j++) {
-      e = file_num[fd].buffer[j*fatfs.fat_entry_len];
-      e += file_num[fd].buffer[j*fatfs.fat_entry_len+1] << 8;
+      if(i == fatfs.active_fat_start) {
+        j += 2;
+      }
+      e = fatfs.sysbuf[j*fatfs.fat_entry_len];
+      e += fatfs.sysbuf[j*fatfs.fat_entry_len+1] << 8;
       if(fatfs.type == PART_TYPE_FAT32) {
-        e += file_num[fd].buffer[j*fatfs.fat_entry_len+2];
-        e += file_num[fd].buffer[j*fatfs.fat_entry_len+3];
+        e += fatfs.sysbuf[j*fatfs.fat_entry_len+2] << 16;
+        e += fatfs.sysbuf[j*fatfs.fat_entry_len+3] << 24;
       }
       if(e == 0) {
         /* this is a free cluster */
         /* first, mark it as the end of the chain */
         if(fatfs.type == PART_TYPE_FAT16) {
-          file_num[fd].buffer[j*fatfs.fat_entry_len] = 0xFF;
-          file_num[fd].buffer[j*fatfs.fat_entry_len+1] = 0x8F;
+          fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xFF;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+1] = 0x8F;
         } else {
-          file_num[fd].buffer[j*fatfs.fat_entry_len] = 0xFF;
-          file_num[fd].buffer[j*fatfs.fat_entry_len+1] = 0xFF;
-          file_num[fd].buffer[j*fatfs.fat_entry_len+2] = 0xFF;
-          file_num[fd].buffer[j*fatfs.fat_entry_len+3] = 0x8F;
+          fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xFF;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+1] = 0xFF;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+2] = 0xFF;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+3] = 0x8F;
         }
-        if(block_write(i, file_num[fd].buffer)) {
+        if(block_write(i, fatfs.sysbuf)) {
           return 0xFFFFFFFF;
         }
-        return e;
+        return ((i - fatfs.active_fat_start) / (512 / fatfs.fat_entry_len)) + j;
       }
     }
   }
   return 0;     /* no clusters found, should raise ENOSPC */
 }
 
-/* write a sector back to disc */
-int fat_flush(int fd) {
-  /* only write to disk if we need to */
-  if(file_num[fd].flags & FAT_FLAG_DIRTY) {
-    if(file_num[fd].sector == 0) {
-      /* this is a new file that's never been saved before, it needs a new cluster
-       * assigned to it, the data stored, then the meta info flushed */
-      file_num[fd].cluster = ??;
-      file_num[fd].sector = ??;
-      
-    if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
-      /* write failed, don't clear the dirty flag */
-      return -1;
-    }
-    /* just clear this flag so this isn't called every time from now on */
-    file_num[fd].flags &= ~FAT_FLAG_DIRTY;
-  }
-  return 0;
-}
-
 /*
  * fat_free_clusters - starts at given cluster and marks all as free until an
  *                     end of chain marker is found
  */
-int fat_free_clusters(int fd, uint32_t cluster) {
+int fat_free_clusters(uint32_t cluster) {
   int estart;
   uint32_t j;
   blockno_t current_block = MAX_BLOCK;
@@ -352,44 +342,68 @@ int fat_free_clusters(int fd, uint32_t cluster) {
   while(1) {
     if(fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len) / 512) != current_block) {
       if(current_block != MAX_BLOCK) {
-        block_write(current_block, file_num[fd].buffer);
+        block_write(current_block, fatfs.sysbuf);
       }
-      if(block_read(fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len) / 512), file_num[fd].buffer)) {
+      if(block_read(fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len) / 512), fatfs.sysbuf)) {
         return -1;
       }
       current_block = fatfs.active_fat_start + ((cluster * fatfs.fat_entry_len)/512);
     }
     estart = (cluster * fatfs.fat_entry_len) & 0x1ff;
-    j = file_num[fd].buffer[estart];
-    file_num[fd].buffer[estart] = 0;
-    j += file_num[fd].buffer[estart + 1] << 8;
-    file_num[fd].buffer[estart+1] = 0;
+    j = fatfs.sysbuf[estart];
+    fatfs.sysbuf[estart] = 0;
+    j += fatfs.sysbuf[estart + 1] << 8;
+    fatfs.sysbuf[estart+1] = 0;
     if(fatfs.type == PART_TYPE_FAT32) {
-      j += file_num[fd].buffer[estart + 2];
-      file_num[fd].buffer[estart+2] = 0;
-      j += file_num[fd].buffer[estart + 3];
-      file_num[fd].buffer[estart+3] = 0;
+      j += fatfs.sysbuf[estart + 2] << 16;
+      fatfs.sysbuf[estart+2] = 0;
+      j += fatfs.sysbuf[estart + 3] << 24;
+      fatfs.sysbuf[estart+3] = 0;
     }
     cluster = j;
     if(cluster >= fatfs.end_cluster_marker) {
       break;
     }
   }
-  block_write(current_block, file_num[fd].buffer);
+  block_write(current_block, fatfs.sysbuf);
   
   return 0;
 }
 
-// int sdfat_select_sector(int fd, blockno_t sector) {
-//   if(fat_flush(fd)) {
-//     return -1;
-//   }
-//   file_num[fd].sector = sector;
-//   file_num[fd].sectors_left = (sector - fatfs.cluster0) % fatfs.sectors_per_cluster;
-//   file_num[fd].cluster = (sector - fatfs.cluster0) / fatfs.sectors_per_cluster;
-//   file_num[fd].cursor = 0;
-//   return block_read(file_num[fd].sector, file_num[fd].buffer);
-// }
+/* write a sector back to disc */
+int fat_flush(int fd) {
+  uint32_t cluster;
+  /* only write to disk if we need to */
+  if(file_num[fd].flags & FAT_FLAG_DIRTY) {
+    if(file_num[fd].sector == 0) {
+      /* this is a new file that's never been saved before, it needs a new cluster
+       * assigned to it, the data stored, then the meta info flushed */
+      cluster = fat_get_free_cluster();
+      if(cluster == 0xFFFFFFFF) {
+        return -1;
+      } else if(cluster == 0) {
+        return -1;
+      } else {
+        file_num[fd].cluster = cluster;
+        file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
+        file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
+      }
+      if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
+        /* write failed, don't clear the dirty flag */
+        return -1;
+      }
+      fat_flush_fileinfo(fd);
+    } else {
+      if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
+        /* write failed, don't clear the dirty flag */
+        return -1;
+      }
+    }
+    /* just clear this flag so this isn't called every time from now on */
+    file_num[fd].flags &= ~FAT_FLAG_DIRTY;
+  }
+  return 0;
+}
 
 /* get the first sector of a given cluster */
 int fat_select_cluster(int fd, uint32_t cluster) {
@@ -734,6 +748,7 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
     i = part_start;
     i += boot16->reserved_sectors;
     fatfs.active_fat_start = i;
+    fatfs.sectors_per_fat = boot16->sectors_per_fat;
     i += (boot16->sectors_per_fat * boot16->num_fats);
     fatfs.root_start = i;
     i += (boot16->root_entries * 32) / 512;
@@ -750,6 +765,7 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
     i = part_start;
     i += boot32->reserved_sectors;
     fatfs.active_fat_start = i;
+    fatfs.sectors_per_fat = boot32->sectors_per_fat;
     i += boot32->sectors_per_fat * boot32->num_fats;
     i -= boot32->cluster_size * 2;
     fatfs.cluster0 = i;
@@ -866,7 +882,7 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
         }
         if(flags & O_TRUNC) {
           /* Need to truncate the file to zero length */
-          fat_free_clusters(fd, file_num[fd].full_first_cluster);
+          fat_free_clusters(file_num[fd].full_first_cluster);
           file_num[fd].size = 0;
           file_num[fd].full_first_cluster = 0;
           file_num[fd].sector = 0;
@@ -898,12 +914,14 @@ int fat_close(int fd, int *rerrno) {
   }
   if(file_num[fd].flags & FAT_FLAG_DIRTY) {
     if(fat_flush(fd)) {
+      printf("FAT Flush failed.\n");
       (*rerrno) = EIO;
       return -1;
     }
   }
   if(file_num[fd].flags & FAT_FLAG_FS_DIRTY) {
     if(fat_flush_fileinfo(fd)) {
+      printf("FAT Flush Fileinfo failed.\n");
       (*rerrno) = EIO;
       return -1;
     }
