@@ -46,7 +46,7 @@ int fat_flush_fileinfo(int fd);
  * Name/Time formatting, doesn't read/write disc
  **/
 
-/* sdfat_to_unix_time - convert a time field from FAT format to unix epoch 
+/* fat_to_unix_time - convert a time field from FAT format to unix epoch 
    seconds. */
 time_t fat_to_unix_time(uint16_t time) {
   struct tm time_str;
@@ -134,7 +134,7 @@ int fat_update_mtime(int fd) {
   return 0;
 }
 
-/* sdfat_get_next_file - returns the next free file descriptor or -1 if none */
+/* fat_get_next_file - returns the next free file descriptor or -1 if none */
 int8_t fat_get_next_file() {
   int j;
 
@@ -297,9 +297,6 @@ int fat_get_free_cluster() {
       return 0xFFFFFFFF;
     }
     for(j=0;j<(512/fatfs.fat_entry_len);j++) {
-      if(i == fatfs.active_fat_start) {
-        j += 2;
-      }
       e = fatfs.sysbuf[j*fatfs.fat_entry_len];
       e += fatfs.sysbuf[j*fatfs.fat_entry_len+1] << 8;
       if(fatfs.type == PART_TYPE_FAT32) {
@@ -316,7 +313,7 @@ int fat_get_free_cluster() {
           fatfs.sysbuf[j*fatfs.fat_entry_len] = 0xF8;
           fatfs.sysbuf[j*fatfs.fat_entry_len+1] = 0xFF;
           fatfs.sysbuf[j*fatfs.fat_entry_len+2] = 0xFF;
-          fatfs.sysbuf[j*fatfs.fat_entry_len+3] = 0xFF;
+          fatfs.sysbuf[j*fatfs.fat_entry_len+3] = 0x0F;
         }
         if(block_write(i, fatfs.sysbuf)) {
           return 0xFFFFFFFF;
@@ -416,7 +413,7 @@ int fat_select_cluster(int fd, uint32_t cluster) {
 }
 
 /* get the next cluster in the current file */
-int sdfat_next_cluster(int fd, int *rerrno) {
+int fat_next_cluster(int fd, int *rerrno) {
   uint32_t i;
   uint32_t j;
   uint32_t k;
@@ -492,10 +489,10 @@ int fat_next_sector(int fd) {
     file_num[fd].cursor = 0;
     return block_read(++file_num[fd].sector, file_num[fd].buffer);
   } else {
-    c = sdfat_next_cluster(fd, &rerrno);
+    c = fat_next_cluster(fd, &rerrno);
     if(c > -1) {
       file_num[fd].file_sector++;
-      return fat_select_cluster(fd, sdfat_next_cluster(fd, &rerrno));
+      return fat_select_cluster(fd, fat_next_cluster(fd, &rerrno));
     } else {
       return -1;
     }
@@ -940,6 +937,7 @@ int fat_close(int fd, int *rerrno) {
 int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
   int i=0;
   uint8_t *bt = (uint8_t *)buffer;
+  /* make sure this is an open file and it can be read */
   (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
@@ -949,6 +947,8 @@ int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
     (*rerrno) = EBADF;
     return -1;
   }
+  
+  /* copy some bytes to the buffer requested */
   while(i < count) {
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) >= file_num[fd].size) {
       break;   /* end of file */
@@ -1082,7 +1082,7 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
   i = 0;
   // walk the FAT cluster chain until we get to the right one
   while(i<file_cluster) {
-    file_num[fd].cluster = sdfat_next_cluster(fd, rerrno);
+    file_num[fd].cluster = fat_next_cluster(fd, rerrno);
     i++;
   }
   file_num[fd].file_sector = new_pos / 512;
