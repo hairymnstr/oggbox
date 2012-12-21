@@ -110,6 +110,9 @@ int test_open(int p) {
 int main(int argc, char *argv[]) {
   int p = 0;
   int rerrno = 0;
+  FILE *fp;
+  int len;
+  uint8_t *d;
 //   int v;
   printf("Running FAT tests...\n\n");
   printf("[%4d] start block device emulation...", p++);
@@ -118,7 +121,7 @@ int main(int argc, char *argv[]) {
   printf("[%4d] mount filesystem, FAT32", p++);
   printf("   %d\n", fat_mount(0, PART_TYPE_FAT32));
 
-  p = test_open(p);
+//   p = test_open(p);
 
   int fd;
   
@@ -128,6 +131,25 @@ int main(int argc, char *argv[]) {
   if(fd > -1) {
     printf("Write\n");
     fat_write(fd, "Hello World\n", 12, &rerrno);
+    printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
+    printf("Close\n");
+    fat_close(fd, &rerrno);
+    printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
+  }
+  
+  printf("Open\n");
+  fd = fat_open("/newfile.png", O_WRONLY | O_CREAT, 0777, &rerrno);
+  printf("fd = %d, errno=%d (%s)\n", fd, rerrno, strerror(rerrno));
+  if(fd > -1) {
+    fp = fopen("/home/nd222/dougal_rx_plot.png", "rb");
+    fseek(fp, 0, SEEK_END);
+    len = ftell(fp);
+    d = malloc(len);
+    fseek(fp, 0, SEEK_SET);
+    fread(d, 1, len, fp);
+    fclose(fp);
+    printf("Write PNG\n");
+    fat_write(fd, d, len, &rerrno);
     printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
     printf("Close\n");
     fat_close(fd, &rerrno);

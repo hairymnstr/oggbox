@@ -289,6 +289,9 @@ int fatname_to_str(char *output, char *input) {
 
 /* low level file-system operations */
 int fat_get_free_cluster() {
+#ifdef TRACE
+  printf("fat_get_free_cluster\n");
+#endif
   blockno_t i;
   int j;
   uint32_t e;
@@ -318,6 +321,9 @@ int fat_get_free_cluster() {
         if(block_write(i, fatfs.sysbuf)) {
           return 0xFFFFFFFF;
         }
+#ifdef TRACE
+  printf("fat_get_free_cluster returning %d\n", ((i - fatfs.active_fat_start) / (512 / fatfs.fat_entry_len)) + j);
+#endif
         return ((i - fatfs.active_fat_start) / (512 / fatfs.fat_entry_len)) + j;
       }
     }
@@ -368,6 +374,9 @@ int fat_free_clusters(uint32_t cluster) {
 /* write a sector back to disc */
 int fat_flush(int fd) {
   uint32_t cluster;
+#ifdef TRACE
+  printf("fat_flush\n");
+#endif
   /* only write to disk if we need to */
   if(file_num[fd].flags & FAT_FLAG_DIRTY) {
     if(file_num[fd].sector == 0) {
@@ -403,7 +412,9 @@ int fat_flush(int fd) {
 
 /* get the first sector of a given cluster */
 int fat_select_cluster(int fd, uint32_t cluster) {
-
+#ifdef TRACE
+  printf("fat_select_cluster\n");
+#endif
   file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
   file_num[fd].sectors_left = fatfs.sectors_per_cluster - 1;
   file_num[fd].cluster = cluster;
@@ -417,14 +428,19 @@ int fat_next_cluster(int fd, int *rerrno) {
   uint32_t i;
   uint32_t j;
   uint32_t k;
-
+#ifdef TRACE
+  printf("fat_next_cluster\n");
+#endif
+  (*rerrno) = 0;
   if(fat_flush(fd)) {
+    (*rerrno) = EIO;
     return -1;
   }
   i = file_num[fd].cluster;
   i = i * fatfs.fat_entry_len;     /* either 2 bytes for FAT16 or 4 for FAT32 */
   j = (i / 512) + fatfs.active_fat_start; /* get the sector number we want */
   if(block_read(j, file_num[fd].buffer)) {
+    (*rerrno) = EIO;
     return -1;
   }
   i = i & 0x1FF;
@@ -436,6 +452,7 @@ int fat_next_cluster(int fd, int *rerrno) {
   }
   if(j < 2) {
     file_num[fd].error = FAT_ERROR_CLUSTER;
+    (*rerrno) = EIO;
     return -1;
   } else if(j >= fatfs.end_cluster_marker) {
     if(file_num[fd].flags & FAT_FLAG_WRITE) {
@@ -478,6 +495,9 @@ int fat_next_cluster(int fd, int *rerrno) {
 int fat_next_sector(int fd) {
   int c;
   int rerrno;
+#ifdef TRACE
+  printf("fat_next_sector(%d)\n", fd);
+#endif
   /* if the current sector was written write to disc */
   if(fat_flush(fd)) {
     return -1;
@@ -492,7 +512,7 @@ int fat_next_sector(int fd) {
     c = fat_next_cluster(fd, &rerrno);
     if(c > -1) {
       file_num[fd].file_sector++;
-      return fat_select_cluster(fd, fat_next_cluster(fd, &rerrno));
+      return fat_select_cluster(fd, c);
     } else {
       return -1;
     }
@@ -509,6 +529,9 @@ int fat_flush_fileinfo(int fd) {
   uint32_t temp_cluster;
   uint32_t temp_sector;
   uint32_t temp_cursor;
+#ifdef TRACE
+  printf("fat_flush_fileinfo(%d)\n", fd);
+#endif
   
   if(file_num[fd].full_first_cluster == fatfs.root_cluster) {
     // do nothing to try and update meta info on the root directory
@@ -542,7 +565,6 @@ int fat_flush_fileinfo(int fd) {
     temp_cursor = file_num[fd].cursor;
     temp_sector = file_num[fd].sector;
     temp_cluster = file_num[fd].cluster;
-    
     fat_select_cluster(fd, file_num[fd].parent_cluster);
     
     // find the first empty file location in the directory
@@ -753,7 +775,7 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
     fatfs.part_start = part_start;
   } else if(filesystem == PART_TYPE_FAT32) {
     fatfs.fat_entry_len = 4;
-    fatfs.end_cluster_marker = 0xFFFFFFF0;
+    fatfs.end_cluster_marker = 0xFFFFFF0;
     boot32 = (boot_sector_fat32 *)fatfs.sysbuf;
     fatfs.sectors_per_cluster = boot32->cluster_size;
     i = part_start;
@@ -791,12 +813,15 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
   int8_t fd;
   (*rerrno) = 0;
   
-//   printf("fat_open(%s, %x)\n", name, mode);
+//   printf("fat_open(%s, %x)\n", name, flags);
   fd = fat_get_next_file();
   if(fd < 0) {
     (*rerrno) = ENFILE;
     return -1;   /* too many open files */
   }
+
+//   printf("Lookup path\n");
+  i = fat_lookup_path(fd, name, rerrno);
   if((flags & O_RDWR)) {
     file_num[fd].flags |= (FAT_FLAG_READ | FAT_FLAG_WRITE);
   } else {
@@ -810,8 +835,6 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
   if(flags & O_APPEND) {
     file_num[fd].flags |= FAT_FLAG_APPEND;
   }
-//   printf("Lookup path\n");
-  i = fat_lookup_path(fd, name, rerrno);
   if((i == -1) && ((*rerrno) == ENOENT)) {
     /* file doesn't exist */
     if((flags & (O_CREAT)) == 0) {
@@ -982,6 +1005,7 @@ int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
     fat_lseek(fd, 0, SEEK_END, rerrno);
   }
   while(i < count) {
+//     printf("Written %d bytes\n", i);
     if(((file_num[fd].cursor + file_num[fd].file_sector * 512)) == file_num[fd].size) {
       file_num[fd].size++;
       file_num[fd].flags |= FAT_FLAG_DIRTY;
@@ -989,7 +1013,10 @@ int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
     file_num[fd].buffer[file_num[fd].cursor] = *bt++;
     file_num[fd].cursor++;
     if(file_num[fd].cursor == 512) {
-      fat_next_sector(fd);
+      if(fat_next_sector(fd)) {
+        (*rerrno) = EIO;
+        return -1;
+      }
     }
     i++;
   }
