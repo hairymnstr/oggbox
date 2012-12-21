@@ -863,6 +863,7 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
       memset(file_num[fd].buffer, 0, 512);
       
       file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
+      (*rerrno) = 0;    /* file not found but we're aloud to create it so success */
       return fd;
     }
   } else if(i == 0) {
@@ -915,11 +916,14 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
       }
     }
   } else {
+    file_num[fd].flags = 0;
     return -1;
   }
 }
 
 int fat_close(int fd, int *rerrno) {
+  printf("fat_close(%d)\n", fd);
+  printf("flags = %x\n", file_num[fd].flags);
   (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
@@ -942,6 +946,7 @@ int fat_close(int fd, int *rerrno) {
     }
   }
   file_num[fd].flags = 0;
+  printf("flags = %x\n", file_num[fd].flags);
   return 0;
 }
 
