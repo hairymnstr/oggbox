@@ -8,7 +8,6 @@
 #include "block_pc.h"
 #include "mbr.h"
 
-extern FileS file_num[4];
 /**************************************************************
  * Filesystem image structure:
  * 
@@ -122,10 +121,6 @@ int main(int argc, char *argv[]) {
   p = test_open(p);
 
   int fd;
-  
-  for(fd=0;fd<MAX_OPEN_FILES;fd++) {
-    printf("File %d flags %x\n", fd, file_num[fd].flags);
-  }
   
   printf("Open\n");
   fd = fat_open("/newfile.txt", O_WRONLY | O_CREAT, 0777, &rerrno);

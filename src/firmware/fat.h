@@ -149,7 +149,6 @@ typedef struct {
   uint32_t  entry_sector;
   uint8_t   entry_number;
   uint32_t  parent_cluster;
-  uint8_t   parent_attributes;
   uint32_t  file_sector;
   time_t    created;
   time_t    modified;

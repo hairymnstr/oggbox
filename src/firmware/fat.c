@@ -636,7 +636,6 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
   }
 
   file_num[fd].parent_cluster = fatfs.root_cluster;
-  file_num[fd].parent_attributes = FAT_ATT_SUBDIR;
   while(1) {
     if(make_dos_name(dosname, path, &path_pointer)) {
       (*rerrno) = ENOENT;
@@ -673,21 +672,17 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
       if(fatfs.type == PART_TYPE_FAT16) {
         if(de->first_cluster == 0) {
           file_num[fd].parent_cluster = fatfs.root_cluster;
-          file_num[fd].parent_attributes = FAT_ATT_SUBDIR;
           fat_select_cluster(fd, fatfs.root_cluster);
         } else {
           file_num[fd].parent_cluster = de->first_cluster;
-          file_num[fd].parent_attributes = de->attributes;
           fat_select_cluster(fd, de->first_cluster);
         }
       } else {
         if(de->first_cluster + (de->high_first_cluster << 16) == 0) {
           file_num[fd].parent_cluster = fatfs.root_cluster;
-          file_num[fd].parent_attributes = FAT_ATT_SUBDIR;
           fat_select_cluster(fd, fatfs.root_cluster);
         } else {
           file_num[fd].parent_cluster = de->first_cluster + (de->high_first_cluster << 16);
-          file_num[fd].parent_attributes = de->attributes;
           fat_select_cluster(fd, de->first_cluster + (de->high_first_cluster << 16));
         }
       }
@@ -835,11 +830,6 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
         (*rerrno) = EROFS;
         return -1;
       }
-      if(file_num[fd].parent_attributes & FAT_ATT_RO) {
-        file_num[fd].flags = 0;
-        (*rerrno) = EACCES;
-        return -1;
-      }
       /* create an empty file structure ready for use */
       file_num[fd].sector = 0;
       file_num[fd].cluster = 0;
@@ -922,8 +912,6 @@ int fat_open(const char *name, int flags, int mode, int *rerrno) {
 }
 
 int fat_close(int fd, int *rerrno) {
-  printf("fat_close(%d)\n", fd);
-  printf("flags = %x\n", file_num[fd].flags);
   (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {
     (*rerrno) = EBADF;
@@ -946,7 +934,6 @@ int fat_close(int fd, int *rerrno) {
     }
   }
   file_num[fd].flags = 0;
-  printf("flags = %x\n", file_num[fd].flags);
   return 0;
 }
 
