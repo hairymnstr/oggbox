@@ -388,24 +388,30 @@ int fat_flush(int fd) {
       } else if(cluster == 0) {
         return -1;
       } else {
-        file_num[fd].cluster = cluster;
+//         file_num[fd].cluster = cluster;
         file_num[fd].full_first_cluster = cluster;
-        file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
         file_num[fd].flags |= FAT_FLAG_FS_DIRTY;
+        file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
+        file_num[fd].sectors_left = fatfs.sectors_per_cluster - 1;
+        file_num[fd].cluster = cluster;
+        //         file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
       }
       if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
         /* write failed, don't clear the dirty flag */
         return -1;
       }
+      file_num[fd].flags &= ~FAT_FLAG_DIRTY;
       fat_flush_fileinfo(fd);
+      
+//   block_pc_snapshot_all("writenfs.img");
+//       exit(-9);
     } else {
       if(block_write(file_num[fd].sector, file_num[fd].buffer)) {
         /* write failed, don't clear the dirty flag */
         return -1;
       }
+      file_num[fd].flags &= ~FAT_FLAG_DIRTY;
     }
-    /* just clear this flag so this isn't called every time from now on */
-    file_num[fd].flags &= ~FAT_FLAG_DIRTY;
   }
   return 0;
 }

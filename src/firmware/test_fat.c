@@ -125,23 +125,23 @@ int main(int argc, char *argv[]) {
 
   int fd;
   
-  printf("Open\n");
-  fd = fat_open("/newfile.txt", O_WRONLY | O_CREAT, 0777, &rerrno);
-  printf("fd = %d, errno=%d (%s)\n", fd, rerrno, strerror(rerrno));
-  if(fd > -1) {
-    printf("Write\n");
-    fat_write(fd, "Hello World\n", 12, &rerrno);
-    printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
-    printf("Close\n");
-    fat_close(fd, &rerrno);
-    printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
-  }
+//   printf("Open\n");
+//   fd = fat_open("/newfile.txt", O_WRONLY | O_CREAT, 0777, &rerrno);
+//   printf("fd = %d, errno=%d (%s)\n", fd, rerrno, strerror(rerrno));
+//   if(fd > -1) {
+//     printf("Write\n");
+//     fat_write(fd, "Hello World\n", 12, &rerrno);
+//     printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
+//     printf("Close\n");
+//     fat_close(fd, &rerrno);
+//     printf("errno=%d (%s)\n", rerrno, strerror(rerrno));
+//   }
   
   printf("Open\n");
   fd = fat_open("/newfile.png", O_WRONLY | O_CREAT, 0777, &rerrno);
   printf("fd = %d, errno=%d (%s)\n", fd, rerrno, strerror(rerrno));
   if(fd > -1) {
-    fp = fopen("/home/nd222/dougal_rx_plot.png", "rb");
+    fp = fopen("/home/nathan/gowrong_draft1.png", "rb");
     fseek(fp, 0, SEEK_END);
     len = ftell(fp);
     d = malloc(len);
