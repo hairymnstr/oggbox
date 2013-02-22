@@ -1,42 +1,45 @@
-EESchema Schematic File Version 2  date Mon 24 Sep 2012 22:22:54 BST
-LIBS:power
-LIBS:device
-LIBS:transistors
-LIBS:conn
-LIBS:linear
-LIBS:regul
+EESchema Schematic File Version 2  date Fri 22 Feb 2013 22:14:53 GMT
 LIBS:74xx
-LIBS:cmos4000
 LIBS:adc-dac
-LIBS:memory
-LIBS:xilinx
-LIBS:special
-LIBS:microcontrollers
-LIBS:dsp
-LIBS:microchip
 LIBS:analog_switches
-LIBS:motorola
-LIBS:texas
-LIBS:intel
-LIBS:audio
-LIBS:interface
-LIBS:digital-audio
-LIBS:philips
-LIBS:display
-LIBS:cypress
-LIBS:siliconi
-LIBS:opto
 LIBS:atmel
+LIBS:audio
+LIBS:cmos4000
+LIBS:conn
 LIBS:contrib
+LIBS:cypress
+LIBS:dev_boards
+LIBS:device
+LIBS:digital-audio
+LIBS:display
+LIBS:dsp
+LIBS:intel
+LIBS:interface
+LIBS:linear
+LIBS:maxim
+LIBS:memory
+LIBS:microchip
+LIBS:microcontrollers
+LIBS:motorola
+LIBS:parallax
+LIBS:philips
+LIBS:power
+LIBS:regul
+LIBS:rf
+LIBS:siliconi
+LIBS:special
+LIBS:texas
+LIBS:transistors
 LIBS:valves
+LIBS:xilinx
 LIBS:oggbox-cache
-EELAYER 25  0
+EELAYER 27 0
 EELAYER END
-$Descr A3 16535 11700
+$Descr A3 16535 11693
 encoding utf-8
 Sheet 1 1
 Title "OggBox open hardware media player"
-Date "24 sep 2012"
+Date "22 feb 2013"
 Rev "B"
 Comp "nathandumont.com"
 Comment1 ""
@@ -72,8 +75,6 @@ Wire Wire Line
 	6200 4250 6300 4250
 Wire Wire Line
 	6300 4250 6300 4150
-Wire Wire Line
-	10250 10300 10250 10550
 Connection ~ 13550 7000
 Wire Wire Line
 	13550 6250 13550 9500
@@ -118,7 +119,7 @@ Connection ~ 15250 1250
 Wire Wire Line
 	15350 1250 15250 1250
 Wire Wire Line
-	10250 11050 10250 10950
+	8450 10300 8450 10200
 Connection ~ 12600 2350
 Wire Wire Line
 	12600 2350 12600 2550
@@ -529,9 +530,9 @@ Wire Wire Line
 	7450 4550 6950 4550
 Wire Wire Line
 	12700 8900 13200 8900
-Connection ~ 10250 9700
+Connection ~ 10250 10200
 Wire Wire Line
-	10250 9600 10250 9800
+	10250 10100 10250 10300
 Connection ~ 7450 6400
 Wire Wire Line
 	7450 6500 7450 6300
@@ -1110,7 +1111,7 @@ Wire Wire Line
 	7150 7600 7250 7600
 Connection ~ 7250 7600
 Wire Wire Line
-	10250 8700 10250 9100
+	10250 8600 10250 9100
 Wire Wire Line
 	5300 4150 5300 3950
 Wire Wire Line
@@ -1237,7 +1238,7 @@ Wire Wire Line
 Wire Wire Line
 	13300 2550 13300 2650
 Wire Wire Line
-	9950 10750 9250 10750
+	8150 10000 7450 10000
 Wire Wire Line
 	15350 1850 15350 1950
 Wire Wire Line
@@ -1271,7 +1272,7 @@ Connection ~ 14200 7200
 Wire Wire Line
 	13550 7000 14300 7000
 Wire Wire Line
-	10250 9700 9350 9700
+	10250 10200 9350 10200
 Wire Wire Line
 	6200 3950 6300 3950
 Wire Wire Line
@@ -1358,8 +1359,6 @@ F 1 "VOL_DN" H 5700 4350 50  0000 C CNN
 	1    5900 4200
 	1    0    0    1   
 $EndComp
-Text Label 10250 10500 1    60   ~ 0
-RBG
 $Comp
 L C C?
 U 1 1 50114137
@@ -1420,15 +1419,15 @@ F 1 "10k" V 15350 1600 50  0000 C CNN
 	1    15350 1600
 	1    0    0    -1  
 $EndComp
-Text Label 9300 10750 0    60   ~ 0
+Text Label 7500 10000 0    60   ~ 0
 READ_BATT
 $Comp
 L BSH121 Q5
 U 1 1 500029A8
-P 10150 10750
-F 0 "Q5" H 10160 10920 60  0000 R CNN
-F 1 "BSH121" H 10160 10600 60  0000 R CNN
-	1    10150 10750
+P 8350 10000
+F 0 "Q5" H 8360 10170 60  0000 R CNN
+F 1 "BSH121" H 8360 9850 60  0000 R CNN
+	1    8350 10000
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -3059,35 +3058,35 @@ Text Label 7000 3650 0    60   ~ 0
 CHG_FAST
 Text Label 12750 8900 0    60   ~ 0
 CHG_STAT
-Text Label 9550 9700 0    60   ~ 0
+Text Label 9550 10200 0    60   ~ 0
 VBAT_SENSE
 $Comp
 L GND #PWR071
 U 1 1 4D361C67
-P 10250 11050
-F 0 "#PWR071" H 10250 11050 30  0001 C CNN
-F 1 "GND" H 10250 10980 30  0001 C CNN
-	1    10250 11050
+P 8450 10300
+F 0 "#PWR071" H 8450 10300 30  0001 C CNN
+F 1 "GND" H 8450 10230 30  0001 C CNN
+	1    8450 10300
 	1    0    0    -1  
 $EndComp
 $Comp
 L R R28
 U 1 1 4D361C30
-P 10250 10050
-F 0 "R28" V 10330 10050 50  0000 C CNN
-F 1 "1k" V 10250 10050 50  0000 C CNN
-F 2 "SM0805" V 10350 10050 50  0001 C CNN
-	1    10250 10050
+P 10250 10550
+F 0 "R28" V 10330 10550 50  0000 C CNN
+F 1 "1k" V 10250 10550 50  0000 C CNN
+F 2 "SM0805" V 10350 10550 50  0001 C CNN
+	1    10250 10550
 	1    0    0    -1  
 $EndComp
 $Comp
 L R R27
 U 1 1 4D361C10
-P 10250 9350
-F 0 "R27" V 10330 9350 50  0000 C CNN
-F 1 "1k" V 10250 9350 50  0000 C CNN
-F 2 "SM0805" V 10350 9350 50  0001 C CNN
-	1    10250 9350
+P 10250 9850
+F 0 "R27" V 10330 9850 50  0000 C CNN
+F 1 "1k" V 10250 9850 50  0000 C CNN
+F 2 "SM0805" V 10350 9850 50  0001 C CNN
+	1    10250 9850
 	1    0    0    -1  
 $EndComp
 Text Label 13150 3650 0    60   ~ 0
@@ -3751,4 +3750,51 @@ Text Label 6700 5250 0    60   ~ 0
 SCREEN_DATA1
 Text Label 6700 5150 0    60   ~ 0
 SCREEN_DATA0
+Wire Wire Line
+	10250 10900 10250 10800
+$Comp
+L GND #PWR?
+U 1 1 5127F00E
+P 10250 10900
+F 0 "#PWR?" H 10250 10900 30  0001 C CNN
+F 1 "GND" H 10250 10830 30  0001 C CNN
+	1    10250 10900
+	1    0    0    -1  
+$EndComp
+$Comp
+L BSS84AKW Q?
+U 1 1 5127F37D
+P 10150 9300
+F 0 "Q?" H 10110 9430 60  0000 R CNN
+F 1 "BSS84AKW" H 10110 9150 60  0000 R CNN
+F 2 "~" H 10150 9300 60  0000 C CNN
+F 3 "~" H 10150 9300 60  0000 C CNN
+	1    10150 9300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10250 9500 10250 9600
+Wire Wire Line
+	9950 9300 8450 9300
+Wire Wire Line
+	8450 9300 8450 9800
+Wire Wire Line
+	9650 9300 9650 9200
+Connection ~ 9650 9300
+$Comp
+L R R?
+U 1 1 5127FBD4
+P 9650 8950
+F 0 "R?" V 9730 8950 50  0000 C CNN
+F 1 "100k" V 9650 8950 50  0000 C CNN
+F 2 "~" H 9650 8950 60  0000 C CNN
+F 3 "~" H 9650 8950 60  0000 C CNN
+	1    9650 8950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9650 8700 9650 8600
+Wire Wire Line
+	9650 8600 10250 8600
+Connection ~ 10250 8700
 $EndSCHEMATC
