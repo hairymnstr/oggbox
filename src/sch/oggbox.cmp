@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2013-07-05 BZR 4237)-testing date = Sun 21 Jul 2013 19:07:32 BST
+Cmp-Mod V01 Created by CvPcb (2013-07-05 BZR 4237)-testing date = Fri 02 Aug 2013 21:51:22 BST
 
 BeginCmp
 TimeStamp = /4F3000CB;
@@ -530,6 +530,20 @@ TimeStamp = /4D360F7D;
 Reference = P2;
 ValeurCmp = USB;
 IdModule  = MICRO_USB_1568026;
+EndCmp
+
+BeginCmp
+TimeStamp = /51F19A42;
+Reference = P3;
+ValeurCmp = CORTEX DEBUG;
+IdModule  = SAMTEC_SHF-SM_5x2;
+EndCmp
+
+BeginCmp
+TimeStamp = /51FC2300;
+Reference = P4;
+ValeurCmp = CONN_1;
+IdModule  = OSHW_COPPER_10MM;
 EndCmp
 
 BeginCmp
@@ -1072,6 +1086,13 @@ IdModule  = SM0603;
 EndCmp
 
 BeginCmp
+TimeStamp = /51F1B9D1;
+Reference = R67;
+ValeurCmp = 10k;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
 TimeStamp = /505EF927;
 Reference = SW1;
 ValeurCmp = VOL_UP;
@@ -1159,7 +1180,7 @@ BeginCmp
 TimeStamp = /51EC27C7;
 Reference = X3;
 ValeurCmp = 8MHz;
-IdModule  = CRYSTAL-SMD-5-3_2;
+IdModule  = XTAL_6036;
 EndCmp
 
 EndListe
