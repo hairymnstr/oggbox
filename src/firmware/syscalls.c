@@ -1,5 +1,6 @@
 #include "config.h"
-#include "sdfat.h"
+#include "fat.h"
+#include <libopencm3/stm32/f1/rtc.h>
 #include <libopencm3/stm32/usart.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +8,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 /**
  *  write_std_out - writes len bytes from char *buffer to the "standard out"
@@ -48,15 +51,17 @@ void _exit (int n) {
 
 int _stat(char *file, struct stat *st) {
   int i;
-  i = sdfat_open(file, O_RDONLY);
+  int rerr;
+  i = fat_open(file, O_RDONLY, 0777, &rerr);
   if(i < 1)
     return -1;
-  sdfat_stat(i, st);
-  sdfat_close(i);
+  fat_fstat(i, st, &rerr);
+  fat_close(i, &rerr);
   return (0);
 }
 
 int _fstat (int fd, struct stat * st) {
+  int rerr;
   write_std_out("_fstat", 6);
   write_std_out((char *)&fd, 4);
   write_std_out("\r\n", 2);
@@ -66,7 +71,7 @@ int _fstat (int fd, struct stat * st) {
     st->st_blksize = 1024;
     return 0;
   } else if (fd >= FIRST_DISC_FILENO) {
-    sdfat_stat(fd - FIRST_DISC_FILENO, st);
+    fat_fstat(fd - FIRST_DISC_FILENO, st, &rerr);
     return 0;
   } else {
     write_std_err("Error: _fstat\r\n", 15);
@@ -75,8 +80,8 @@ int _fstat (int fd, struct stat * st) {
 }
 
 register char *stack_ptr asm ("sp");
-caddr_t _sbrk_r(void *reent, size_t incr) {
-  extern char end asm ("end"); // Defined by the linker
+caddr_t _sbrk_r(void *reent __attribute__((__unused__)), size_t incr) {
+  extern char end asm ("end");  // Defined by the linker
   static char *heap_end;
   char *prev_heap_end;
 
@@ -103,18 +108,19 @@ int _isatty(int fd) {
 }
 
 int _lseek(int fd, int ptr, int dir) {
+  int rerr;
 //   iprintf("_lseek %d, %d, %d\r\n", fd, ptr, dir);
   if(fd < FIRST_DISC_FILENO) {
     // tried to seek on stdin/out/err
     return ptr-1;
   }
-  return sdfat_lseek(fd - FIRST_DISC_FILENO, ptr, dir);
+  return fat_lseek(fd - FIRST_DISC_FILENO, ptr, dir, &rerr);
 }
 
 int _open_r(struct _reent *ptr, const char *name, int flags, int mode) {
   int i;
   int rerrno;
-  i = sdfat_open(name, flags, mode, &rerrno);
+  i = fat_open(name, flags, mode, &rerrno);
 
   if(i<0) {
     ptr->_errno = rerrno;
@@ -126,7 +132,8 @@ int _open_r(struct _reent *ptr, const char *name, int flags, int mode) {
 }
 
 int _close(int fd) {
-  sdfat_close(fd - FIRST_DISC_FILENO);
+  int rerr;
+  fat_close(fd - FIRST_DISC_FILENO, &rerr);
   return(0);
 }
 
@@ -143,6 +150,7 @@ int _write(int fd, const void *data, unsigned int count) {
 }
 
 int _read(int fd, void *buffer, unsigned int count) {
+  int rerr;
   //write_std_out("_read\n", 6);
   if (fd == STDOUT_FILENO) {
     return -1;
@@ -151,9 +159,13 @@ int _read(int fd, void *buffer, unsigned int count) {
   } else if (fd == STDIN_FILENO) {
     return(-1);   // not implemented
   } else if (fd >= FIRST_DISC_FILENO) {
-    return sdfat_read(fd - FIRST_DISC_FILENO, buffer, count);
-  } else {
-    return -1;
+    return fat_read(fd - FIRST_DISC_FILENO, buffer, count, &rerr);
   }
+  return -1;
 } 
 
+int _gettimeofday(struct timeval *tp, void *tzp __attribute__((__unused__))) {
+  tp->tv_sec = rtc_get_counter_val();
+  tp->tv_usec = 0;
+  return 0;
+}

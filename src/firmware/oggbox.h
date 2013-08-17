@@ -3,6 +3,22 @@
 
 #include <libopencm3/stm32/f1/gpio.h>
 
+#define SD_SPI SPI2
+#define SD_PORT GPIOB
+#define SD_CS GPIO12
+#define SD_MOSI GPIO15
+#define SD_MISO GPIO14
+#define SD_SCK GPIO13
+#define SD_WP GPIO11
+#define SD_WP_PORT GPIOB
+#define SD_CP GPIO13
+#define SD_CP_PORT GPIOC
+
+#define SD_SPI_APB RCC_APB1ENR
+#define SD_RCC_SPI RCC_APB1ENR_SPI2EN
+#define SD_IO_APB RCC_APB2ENR
+#define SD_RCC_IO RCC_APB2ENR_IOPBEN
+
 #define GREEN_LED_PORT GPIOB
 #define GREEN_LED_PIN GPIO1
 #define RED_LED_PORT GPIOB

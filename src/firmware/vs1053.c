@@ -21,20 +21,18 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
-#include <libopencm3/stm32/nvic.h>
+#include <libopencm3/stm32/f1/nvic.h>
 #include <libopencm3/stm32/exti.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>
-#include "sdfat.h"
+#include <fcntl.h>
 #include "oggbox.h"
-//#include <fildes.h>
-
-extern FileS file_num[];
-extern MediaFileS media_file;
 
 volatile struct player_status current_track;
 volatile int current_track_playing;
+FILE *media_fd;
+ssize_t media_byte_len;
 
 /**
  *  PRIVATE FUNCTION
@@ -43,25 +41,6 @@ volatile int current_track_playing;
  *                 Makes sure last bit is clocked out
  *                 before returning so CS can be released.
  **/
-// uint8_t spi_msg(uint8_t dat) {
-//   /* wait for any previous transmission to be done */
-//   while((SPI_SR(CODEC_SPI) & SPI_SR_BSY)) {;}
-// 
-//   /* make sure the RX data flag is clear */
-//   if(SPI_SR(CODEC_SPI) & SPI_SR_RXNE) {
-//     spi_read(CODEC_SPI);
-//   }
-// 
-//   /* write all 1s out, generates the necessary clocks */
-//   spi_write(CODEC_SPI, dat);
-// 
-//   /* wait until a whole byte has been clocked back in */
-//   while((SPI_SR(CODEC_SPI) & SPI_SR_RXNE) == 0) {;}
-// 
-//   /* return the received byte */
-//   return spi_read(CODEC_SPI);
-// }
-
 uint8_t spi_msg(uint8_t dat) {
   return spi_xfer(CODEC_SPI, dat);
 }
@@ -178,14 +157,6 @@ void vs1053_sine_test(uint8_t pitch) {
   gpio_clear(CODEC_PORT, CODEC_CS);
 }
 
-/*void vs1053_get_end_fill_byte() {
-  int i;
-  vs1053_SCI_write(SCI_WRAMADDR, PARAM_END_FILL_BYTE);
-  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-  codec_params.endFillByte = vs1053_SCI_read(SCI_WRAM);
-  return;
-}*/
-
 void demo_codec() {
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
   iprintf("initial state 0x%04X\n", vs1053_SCI_read(0));
@@ -193,164 +164,6 @@ void demo_codec() {
   vs1053_SCI_write(0x00, 0x0c20);
 
   vs1053_sine_test(170);
-}
-
-void play_file(char *filename) {
-  int i, j=0,fn;
-  FILE *fr;
-//   int s = 1;
-  /*
-
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
-  vs1053_SCI_write(0x00, 0xc00);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
-  vs1053_SCI_write(SCI_VOL, 0x3030);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
-  iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));*/
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-
-
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-//  vs1053_SCI_write(SCI_CLOCKF, 0xA000);
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  vs1053_SCI_write(0x00, 0xc00);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  vs1053_SCI_write(SCI_VOL, 0x3030);
-  
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("SCI_STATUS = 0x%04X\r\n", vs1053_SCI_read(SCI_STATUS));
-  
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("initial state 0x%04X\r\n", vs1053_SCI_read(SCI_CLOCKF));
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_256);
-  vs1053_SCI_write(SCI_CLOCKF, 0xF800);
-  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_16);
-  
-  for(i=0;i<1000;i++) {__asm__("nop\n\t");}
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("after setup 0x%04X\r\n", vs1053_SCI_read(SCI_CLOCKF));
-  
-  fr = fopen(filename, "r");
-  fn = fileno(fr);
-//   iprintf("File No. %d\r\n", fn - FIRST_DISC_FILENO);
-  
-//   iprintf("==================================\r\n");
-//   int k;
-//   for(k=0;k<sizeof(FileS);k++) {
-//     iprintf("%02X ", ((char *)(&file_num[fn- FIRST_DISC_FILENO]))[k]);
-//     if((k+1) % 8 == 0) iprintf("\r\n");
-//   }
-  
-//  l = read(fn, dat, 512);
-  while(1) {
-    gpio_set(CODEC_PORT, CODEC_CS);
-    for(j=0;j<16;j++) {
-      while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-      for(i=0;i<32;i+=2) {
-        spi_msg(file_num[fn-FIRST_DISC_FILENO].buffer[32*j+i]);
-        spi_msg(file_num[fn-FIRST_DISC_FILENO].buffer[32*j+i+1]);
-      }
-    }
-    gpio_clear(CODEC_PORT, CODEC_CS);
-//     iprintf("getting sector %d\r\n", s++);
-    sdfat_next_sector(fn-FIRST_DISC_FILENO);
-  }
-
-}
-
-void play_file_fast(char *filename) {
-  int i, j=0, k; //l, fn;
-  uint16_t endFillByte;
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  vs1053_SCI_write(0x00, 0xc00);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  vs1053_SCI_write(SCI_VOL, 0x1010);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_256);
-  vs1053_SCI_write(SCI_CLOCKF, 0xF800);
-  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_16);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("after setup 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
-
-
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-//  vs1053_SCI_write(SCI_CLOCKF, 0xA000);
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-
-  sdfat_open_media(filename);
-
-  while(!media_file.near_end) {
-    for(k=0;k<4;k++) {
-      gpio_set(CODEC_PORT, CODEC_CS);
-      for(j=0;j<16;j++) {
-        while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-        for(i=0;i<32;i++) {
-          spi_msg(media_file.buffer[media_file.active_buffer][512 * k + 32*j + i]);
-        }
-      }
-      gpio_clear(CODEC_PORT, CODEC_CS);
-    }
-    sdfat_read_media();
-  }
-  // the current buffer is not full, and is the last
-  for(k=0;k<4;k++) {
-    gpio_set(CODEC_PORT, CODEC_CS);
-    for(j=0;j<16;j++) {
-      while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-      for(i=0;i<32;i++) {
-        if((512 * k + 32 * j + i) > media_file.file_end) {
-          i = 32;
-          j = 16;
-          k = 4;    /* bust us out of all the nested loops */
-        } else {
-          spi_msg(media_file.buffer[media_file.active_buffer][512 * k + 32 * j + i]);
-        }
-      }
-    }
-    gpio_clear(CODEC_PORT, CODEC_CS);
-  }
-  /* now need to clean up the fifos and stop the player */
-  gpio_clear(CODEC_PORT, CODEC_CS);
-  /* fetch the value of endFillByte */
-  vs1053_SCI_write(SCI_WRAMADDR, PARAM_END_FILL_BYTE);
-  while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  endFillByte = vs1053_SCI_read(SCI_WRAM) & 0xFF;
-
-  gpio_set(CODEC_PORT, CODEC_CS);
-  for(i=0;i<65;i++) {
-    while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-    for(j=0;j<32;j++) {
-      spi_msg(endFillByte);
-    }
-  }
-  gpio_clear(CODEC_PORT, CODEC_CS);
-  i = vs1053_SCI_read(SCI_MODE);
-  i |= SM_CANCEL;
-  vs1053_SCI_write(SCI_MODE, i);
-  gpio_set(CODEC_PORT, CODEC_CS);
-  j = 0;
-  while(j < 2048) {
-    while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-    for(i=0;i<32;i++) {
-      spi_msg(endFillByte);
-    }
-    j += 32;
-    if(!(vs1053_SCI_read(SCI_MODE) & SM_CANCEL)) {
-      break;
-    }
-  }
-  gpio_clear(CODEC_PORT, CODEC_CS);
-  if(j >= 2048) {
-    /* need to do a software reset */
-    vs1053_SCI_write(SCI_MODE, SM_RESET);
-  }
-  return;
 }
 
 void play_file_fast_async(char *filename) {
@@ -368,12 +181,6 @@ void play_file_fast_async(char *filename) {
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   iprintf("after setup 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
 
-
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-//  vs1053_SCI_write(SCI_CLOCKF, 0xA000);
-//  while(!gpio_get(CODEC_CTRL, CODEC_DREQ)) {;}
-
-
   current_track.byte_count = 0;
   current_track_playing = 1;
   // now to set up the external interrupt on DREQ
@@ -386,39 +193,33 @@ void play_file_fast_async(char *filename) {
   exti_select_source(EXTI3, CODEC_DREQ_PORT);
   exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
   exti_enable_request(EXTI3);
+
   // generate a software interrupt to get this thing started as there shouldn't be any edges
-  sdfat_open_media(filename);
-//   iprintf("Generating software interrupt to start playback\r\n");
+  media_fd = fopen(filename, "rb");
+  fseek(media_fd, 0, SEEK_END);
+  media_byte_len = ftell(media_fd);
+  fseek(media_fd, 0, SEEK_SET);
   EXTI_SWIER |= EXTI3;
-//   exti3_isr();
 }
 
 void exti3_isr(void) {
   int i, j;
   uint16_t endFillByte;
+  
   gpio_set(GREEN_LED_PORT, GREEN_LED_PIN);
-//   gpio_set(RED_LED_PORT, RED_LED_PIN);
-//   iprintf("fill bytes\r\n");
   exti_reset_request(EXTI3);
   iprintf("exti3_isr\r\n");
-  if(media_file.buffer_ready[media_file.active_buffer] == 0) {
-    iprintf("Buffer %d was ready...\r\n", media_file.active_buffer);
   while(gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
-//     iprintf("loop\r\n");
     gpio_set(CODEC_PORT, CODEC_CS);
-    if(!media_file.near_end) {
+    if(ftell(media_fd) < (media_byte_len - 32)) {
       for(i=0;i<32;i++) {
-        spi_xfer(CODEC_SPI, media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
+        spi_xfer(CODEC_SPI, fgetc(media_fd));
       }
-      if((current_track.byte_count % 512) == 0) {
+      if((ftell(media_fd) % 512) == 0) {
         gpio_clear(CODEC_PORT, CODEC_CS);
       }
-      if(current_track.byte_count == MEDIA_BUFFER_SIZE) {
-//         iprintf("reading\r\n");
-        sdfat_read_media();
-        current_track.byte_count = 0;
+      if((ftell(media_fd) % 4096) == 0) {
         gpio_clear(CODEC_PORT, CODEC_CS);
-//         iprintf("swapping...\r\n");
         /* fetch the value of current decode position */
         vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_LO);
         for(i=0;i<150;i++) {__asm__("nop\n\t");}
@@ -427,16 +228,11 @@ void exti3_isr(void) {
         vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_HI);
         for(i=0;i<150;i++) {__asm__("nop\n\t");}
         current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
-//         iprintf("swap\r\n");
         gpio_set(CODEC_PORT, CODEC_CS);
-        while(media_file.buffer_ready[media_file.active_buffer]) {__asm__("nop\n\t");}
-//           iprintf("Breaking out\r\n");
-//           break;
-//         }
       }
     } else {
       for(i=0;i<32;i++) {
-        if(current_track.byte_count > media_file.file_end) {
+        if(feof(media_fd)) {
           iprintf("ending\r\n");
           // Ought to do this next bit by issuing a player_stop job so that the cleanup code
           // is all in one place and we can power down everything automatically for power saving
@@ -486,11 +282,10 @@ void exti3_isr(void) {
           nvic_disable_irq(NVIC_EXTI3_IRQ);
           return;
         } else {
-          spi_xfer(CODEC_SPI, media_file.buffer[media_file.active_buffer][current_track.byte_count++]);
+          spi_xfer(CODEC_SPI, fgetc(media_fd));
         }
       }
     }
-  }
   }
 
   gpio_clear(GREEN_LED_PORT, GREEN_LED_PIN);

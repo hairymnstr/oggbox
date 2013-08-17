@@ -753,6 +753,10 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
  * callable file access routines
  */
 
+/**
+ * \brief Attempts to mount a partition starting at the addressed block.
+ * 
+ **/
 int fat_mount(blockno_t part_start, uint8_t filesystem) {
   int i;
   boot_sector_fat16 *boot16;
@@ -810,6 +814,246 @@ int fat_mount(blockno_t part_start, uint8_t filesystem) {
   printf("type: %d\n", fatfs.type);
   printf("part_start: %d\n", fatfs.part_start);
 #endif
+  
+  return 0;
+}
+
+int fat_mount_fat16(blockno_t start, blockno_t volume_size) {
+  blockno_t i;
+  boot_sector_fat16 *boot16;
+  
+  fatfs.read_only = block_get_device_read_only();
+  block_read(start, fatfs.sysbuf);
+  
+  boot16 = (boot_sector_fat16 *)fatfs.sysbuf;
+  // now validate all fields and reject the block device if anything fails
+  
+  // could check the volume name is all printable characters
+  
+  // we can only handle sector size equal to the disk block size
+  // for now at least.
+  if(!(boot16->sector_size == 512)) {
+#ifdef FAT_DEBUG
+    printf("Sector size not 512 bytes.\r\n");
+#endif
+    return -1;
+  }
+  
+  // cluster size is a number of sectors per cluster.  Must be a
+  // power of two in 8 bits (i.e. 1, 2, 4, 8, 16, 32, 64 or 128)
+  for(i=0;i<8;i++) {
+    if(boot16->cluster_size == (1 << i)) {
+      break;
+    }
+  }
+  if(i == 8) {
+#ifdef FAT_DEBUG
+    printf("Cluster size not power of two.\r\n");
+#endif
+    return -1;
+  }
+  
+  // number of reserved sectors must be at least 1, can't be
+  // the size of the partition.
+  if((boot16->reserved_sectors < 1) || (boot16->reserved_sectors >= volume_size)) {
+#ifdef FAT_DEBUG
+    printf("Reserved sector count was not valid: %d\r\n", boot16->reserved_sectors);
+#endif
+    return -1;
+  }
+  
+  // number of fats, normally two but must be between 1 and 15
+  if((boot16->num_fats < 1) || (boot16->num_fats >= 15)) {
+#ifdef FAT_DEBUG
+    printf("Invalid number of FATs: %d\r\n", boot16->num_fats);
+#endif
+    return -1;
+  }
+  
+  // number of root directory entries
+  if((boot16->root_entries == 0)) {
+#ifdef FAT_DEBUG
+    printf("No root directory entries, looks like a FAT32 partition.\r\n");
+#endif
+    return -1;
+  }
+  
+  // number of root directory entries must be an integer multiple of the sector size
+  if((boot16->root_entries) & ((boot16->sector_size / 32) - 1)) {
+#ifdef FAT_DEBUG
+    printf("Root directory will not be an integer number of sectors.\r\n");
+#endif
+    return -1;
+  }
+  
+  // total logical sectors (if less than 65535)
+  if(boot16->total_sectors == 0) {
+    if(boot16->big_total_sectors > volume_size) {
+#ifdef FAT_DEBUG
+      printf("Total sectors is larger than the volume.\r\n");
+#endif
+      return -1;
+    }
+  } else {
+    if(boot16->total_sectors > volume_size) {
+#ifdef FAT_DEBUG
+      printf("Total sectors is larger than the volume.\r\n");
+#endif
+      return -1;
+    }
+  }
+  
+  fatfs.sectors_per_cluster = boot16->cluster_size;
+  fatfs.root_len = boot16->root_entries;
+  i = start;
+  i += boot16->reserved_sectors;
+  fatfs.active_fat_start = i;
+  fatfs.sectors_per_fat = boot16->sectors_per_fat;
+  i += (boot16->sectors_per_fat * boot16->num_fats);
+  fatfs.root_start = i;
+  i += (boot16->root_entries * 32) / 512;
+  i -= (boot16->cluster_size * 2);
+  fatfs.cluster0 = i;
+  
+  // check the calculated values are within the volume 
+  if(fatfs.root_start > (start + volume_size)) {
+#ifdef FAT_DEBUG
+    printf("Root start is beyond the end of the volume.\r\n");
+#endif
+    return -1;
+  }
+  
+  if(boot16->total_sectors == 0) {
+    fatfs.total_sectors = boot16->big_total_sectors;
+  } else {
+    fatfs.total_sectors = boot16->total_sectors;
+  }
+  
+  // validated a FAT16 volume boot record, setup the FAT16 abstraction values
+  fatfs.type = PART_TYPE_FAT16;
+  fatfs.fat_entry_len = 2;
+  fatfs.end_cluster_marker = 0xFFF0;
+  fatfs.part_start = start;
+  fatfs.root_cluster = 1;
+  
+  return 0;
+}
+
+int fat_mount_fat32(blockno_t start, blockno_t volume_size) {
+  blockno_t i;
+  boot_sector_fat32 *boot32;
+  
+  fatfs.read_only = block_get_device_read_only();
+  block_read(start, fatfs.sysbuf);
+  
+  boot32 = (boot_sector_fat32 *)fatfs.sysbuf;
+  // now validate all fields and reject the block device if anything fails
+  
+  // could check the volume name is all printable characters
+  
+  // we can only handle sector size equal to the disk block size
+  // for now at least.
+  if(!(boot32->sector_size == 512)) {
+#ifdef FAT_DEBUG
+    printf("Sector size not 512 bytes.\r\n");
+#endif
+    return -1;
+  }
+  
+  // cluster size is a number of sectors per cluster.  Must be a
+  // power of two in 8 bits (i.e. 1, 2, 4, 8, 16, 32, 64 or 128)
+  for(i=0;i<8;i++) {
+    if(boot32->cluster_size == (1 << i)) {
+      break;
+    }
+  }
+  if(i == 8) {
+#ifdef FAT_DEBUG
+    printf("Cluster size not power of two.\r\n");
+#endif
+    return -1;
+  }
+  
+  // number of reserved sectors must be at least 1, can't be
+  // the size of the partition.
+  if((boot32->reserved_sectors < 1) || (boot32->reserved_sectors >= volume_size)) {
+#ifdef FAT_DEBUG
+    printf("Reserved sector count was not valid: %d\r\n", boot32->reserved_sectors);
+#endif
+    return -1;
+  }
+  
+  // number of fats, normally two but must be between 1 and 15
+  if((boot32->num_fats < 1) || (boot32->num_fats >= 15)) {
+#ifdef FAT_DEBUG
+    printf("Invalid number of FATs: %d\r\n", boot32->num_fats);
+#endif
+    return -1;
+  }
+  
+  // number of root directory entries
+  if((boot32->root_entries != 0)) {
+#ifdef FAT_DEBUG
+    printf("Root directory entries, looks like a FAT16 partition.\r\n");
+#endif
+    return -1;
+  }
+  
+  // number of root directory entries must be an integer multiple of the sector size
+  if((boot32->root_entries) & ((boot32->sector_size / 32) - 1)) {
+#ifdef FAT_DEBUG
+    printf("Root directory will not be an integer number of sectors.\r\n");
+#endif
+    return -1;
+  }
+  
+  // total logical sectors (if less than 65535)
+  if(boot32->total_sectors == 0) {
+    if(boot32->big_total_sectors > volume_size) {
+#ifdef FAT_DEBUG
+      printf("Total sectors is larger than the volume.\r\n");
+#endif
+      return -1;
+    }
+  } else {
+    if(boot32->total_sectors > volume_size) {
+#ifdef FAT_DEBUG
+      printf("Total sectors is larger than the volume.\r\n");
+#endif
+      return -1;
+    }
+  }
+  
+  boot32 = (boot_sector_fat32 *)fatfs.sysbuf;
+  fatfs.sectors_per_cluster = boot32->cluster_size;
+  i = start;
+  i += boot32->reserved_sectors;
+  fatfs.active_fat_start = i;
+  fatfs.sectors_per_fat = boot32->sectors_per_fat;
+  i += boot32->sectors_per_fat * boot32->num_fats;
+  i -= boot32->cluster_size * 2;
+  fatfs.cluster0 = i;
+  fatfs.root_cluster = boot32->root_start;
+
+  // check the calculated values are within the volume 
+  if(fatfs.root_start > (start + volume_size)) {
+#ifdef FAT_DEBUG
+    printf("Root start is beyond the end of the volume.\r\n");
+#endif
+    return -1;
+  }
+  
+  if(boot32->total_sectors == 0) {
+    fatfs.total_sectors = boot32->big_total_sectors;
+  } else {
+    fatfs.total_sectors = boot32->total_sectors;
+  }
+  
+  // validated a FAT32 volume boot record, setup the FAT32 abstraction values
+  fatfs.type = PART_TYPE_FAT32;
+  fatfs.fat_entry_len = 4;
+  fatfs.end_cluster_marker = 0xFFFFFF0;
+  fatfs.part_start = start;
   
   return 0;
 }
@@ -964,7 +1208,7 @@ int fat_close(int fd, int *rerrno) {
 }
 
 int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
-  int i=0;
+  uint32_t i=0;
   uint8_t *bt = (uint8_t *)buffer;
   /* make sure this is an open file and it can be read */
   (*rerrno) = 0;
@@ -996,7 +1240,7 @@ int fat_read(int fd, void *buffer, size_t count, int *rerrno) {
 }
 
 int fat_write(int fd, const void *buffer, size_t count, int *rerrno) {
-  int i=0;
+  uint32_t i=0;
   uint8_t *bt = (uint8_t *)buffer;
   (*rerrno) = 0;
   if(fd >= MAX_OPEN_FILES) {

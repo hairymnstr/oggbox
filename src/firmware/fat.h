@@ -55,6 +55,7 @@ struct fat_info {
   uint32_t  root_cluster;
   uint8_t   type;               // type of filesystem (FAT16 or FAT32)
   uint8_t   part_start;         // start of partition containing filesystem
+  uint32_t  total_sectors;
   uint8_t   sysbuf[512];
 };
 

@@ -17,15 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Linker script for Olimex STM32-H103 (STM32F103RBT6, 128K flash, 20K RAM). */
+/* Linker script for STM32F100xE, 512K flash, 64K RAM. */
 
 /* Define memory regions. */
 MEMORY
 {
-	rom (rx) : ORIGIN = 0x08000000, LENGTH = 128K
-	ram (rwx) : ORIGIN = 0x20000000, LENGTH = 20K
+        rom (rx) : ORIGIN = 0x08000000, LENGTH = 512K
+        ram (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
 }
-
+/* Enforce emmition of the vector table. */
 EXTERN (vector_table)
 
 /* Define the entry point of the output file. */
@@ -34,21 +34,18 @@ ENTRY(reset_handler)
 /* Define sections. */
 SECTIONS
 {
-        . = ORIGIN(rom);
-
         .text : {
                 *(.vectors)     /* Vector table */
                 *(.text*)       /* Program code */
                 . = ALIGN(4);
                 *(.rodata*)     /* Read-only data */
                 . = ALIGN(4);
-                _etext = .;
         } >rom
 
         /*
-        * Another section used by C++ stuff, appears when using newlib with
-        * 64bit (long long) printf support
-        */
+         * Another section used by C++ stuff, appears when using newlib with
+         * 64bit (long long) printf support
+         */
         .ARM.extab : {
                 *(.ARM.extab*)
         } >rom
@@ -58,21 +55,23 @@ SECTIONS
                 __exidx_end = .;
         } >rom
 
-        . = ORIGIN(ram);
+        . = ALIGN(4);
+        _etext = .;
 
-        .data : AT (__exidx_end) {
+        .data : {
                 _data = .;
                 *(.data*)       /* Read-write initialized data */
                 . = ALIGN(4);
                 _edata = .;
-        } >ram
+        } >ram AT >rom
+        _data_loadaddr = LOADADDR(.data);
 
         .bss : {
                 *(.bss*)        /* Read-write zero initialized data */
                 *(COMMON)
                 . = ALIGN(4);
                 _ebss = .;
-        } >ram AT >rom
+        } >ram
 
         /*
          * The .eh_frame section appears to be used for C++ exception handling.

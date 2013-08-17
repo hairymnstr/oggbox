@@ -27,13 +27,11 @@
 #include "oggbox.h"
 #include "lcd.h"
 #include "ui.h"
-#include "sdfat.h"
+#include "block.h"
 #include "nd_usart.h"
-#include "sd.h"
 #include "vs1053.h"
 #include "ogg_meta.h"
 
-extern SDCard card;
 extern volatile struct player_status current_track;
 extern volatile int current_track_playing;
 
@@ -77,8 +75,8 @@ int main(void)
         
   lcdBacklight(0);
         
-  sdfat_init();
-  iprintf("Mount SD: %d\r\n", sdfat_mount());
+  block_init();
+  //iprintf("Mount SD: %d\r\n", sdfat_mount());
         
   lcdPrintPortrait(" OggBox", 2);
   lcdPrintPortrait("  RevA", 3);
