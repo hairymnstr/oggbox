@@ -40,4 +40,7 @@
 #define LCD_DATA_PORT GPIOC
 #define LCD_DATA_MASK 0xFF
 
+#define AUX_POWER_PORT GPIOC
+#define AUX_POWER_PIN GPIO8
+
 #endif /* ifndef OGGBOX_H */

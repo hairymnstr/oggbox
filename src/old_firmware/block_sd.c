@@ -76,7 +76,7 @@ uint16_t sd_command(uint8_t code, uint32_t data, uint8_t chksm) {
  * sd_card_reset - performs a software reset on the card to get it ready for
  *                 use.
  **/
-uint8_t sd_card_reset() {
+int sd_card_reset() {
   int i;
   uint16_t c;
 
@@ -267,7 +267,7 @@ int block_init() {
   spi_enable_software_slave_management(SD_SPI);                 /* we want to handle the CS signal 
                                                                    in software */
   spi_set_nss_high(SD_SPI);
-  spi_set_baudrate_prescaler(SD_SPI, SPI_CR1_BR_FPCLK_DIV_256); /* PCLOCK/256 as clock */
+  spi_set_baudrate_prescaler(SD_SPI, SPI_CR1_BR_FPCLK_DIV_4); /* PCLOCK/256 as clock */
   spi_set_master_mode(SD_SPI);                                  /* we want to control everything and
                                                                    generate the clock -> master */
   spi_set_clock_polarity_0(SD_SPI);                             /* sck idle state high */
@@ -311,7 +311,11 @@ int block_write(blockno_t block, void *buf) {
   return 0;
 }
 
-int block_get_size() {
+int block_get_volume_size() {
+  return card.size;
+}
+
+int block_get_block_size() {
   return BLOCK_SIZE;
 }
 

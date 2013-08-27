@@ -18,7 +18,7 @@ typedef struct {
   uint8_t  chs_end[3];
   uint32_t lba_start;
   uint32_t length;
-} mbr_entry;
+} __attribute__((__packed__)) mbr_entry;
 
 #endif
    

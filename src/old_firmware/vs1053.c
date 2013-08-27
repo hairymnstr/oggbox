@@ -46,12 +46,6 @@ uint8_t spi_msg(uint8_t dat) {
 }
 
 void init_codec() {
-  /* enable clock for Aux power and power up the regulators */
-  rcc_peripheral_enable_clock(&CODEC_PWR_APB, CODEC_RCC_PWR);
-  gpio_set_mode(CODEC_PWR_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-                GPIO_CNF_OUTPUT_PUSHPULL, CODEC_PWR);
-  gpio_set(CODEC_PWR_PORT, CODEC_PWR);
-  
   /* enable SPI1 clock */
   rcc_peripheral_enable_clock(&CODEC_SPI_APB, CODEC_RCC_SPI);
   /* enable clock for the chip select pin */
@@ -159,7 +153,7 @@ void vs1053_sine_test(uint8_t pitch) {
 
 void demo_codec() {
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {;}
-  iprintf("initial state 0x%04X\n", vs1053_SCI_read(0));
+  iprintf("initial state 0x%04X\r\n", vs1053_SCI_read(0));
 
   vs1053_SCI_write(0x00, 0x0c20);
 
@@ -173,41 +167,40 @@ void play_file_fast_async(char *filename) {
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   vs1053_SCI_write(SCI_VOL, 0x1010);
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("initial state 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
+  iprintf("initial state 0x%04X\r\n", vs1053_SCI_read(SCI_CLOCKF));
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
   spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_256);
   vs1053_SCI_write(SCI_CLOCKF, 0xF800);
-  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_16);
+  spi_set_baudrate_prescaler(CODEC_SPI, SPI_CR1_BR_FPCLK_DIV_32);
   while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
-  iprintf("after setup 0x%04X\n", vs1053_SCI_read(SCI_CLOCKF));
+  iprintf("after setup 0x%04X\r\n", vs1053_SCI_read(SCI_CLOCKF));
 
   current_track.byte_count = 0;
   current_track_playing = 1;
   // now to set up the external interrupt on DREQ
   // may need to trigger the first service in software too as we probably won't get an edge
-  rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
   
-  nvic_enable_irq(NVIC_EXTI3_IRQ);
-  nvic_set_priority(NVIC_EXTI3_IRQ, 16);
+  nvic_enable_irq(NVIC_EXTI9_5_IRQ);
+  nvic_set_priority(NVIC_EXTI9_5_IRQ, 16);
   
-  exti_select_source(EXTI3, CODEC_DREQ_PORT);
-  exti_set_trigger(EXTI3, EXTI_TRIGGER_RISING);
-  exti_enable_request(EXTI3);
+  exti_select_source(EXTI8, CODEC_DREQ_PORT);
+  exti_set_trigger(EXTI8, EXTI_TRIGGER_RISING);
+  exti_enable_request(EXTI8);
 
   // generate a software interrupt to get this thing started as there shouldn't be any edges
   media_fd = fopen(filename, "rb");
   fseek(media_fd, 0, SEEK_END);
   media_byte_len = ftell(media_fd);
   fseek(media_fd, 0, SEEK_SET);
-  EXTI_SWIER |= EXTI3;
+  EXTI_SWIER |= EXTI8;
 }
 
-void exti3_isr(void) {
+void exti9_5_isr(void) {
   int i, j;
   uint16_t endFillByte;
   
   gpio_set(GREEN_LED_PORT, GREEN_LED_PIN);
-  exti_reset_request(EXTI3);
+  exti_reset_request(EXTI8);
   iprintf("exti3_isr\r\n");
   while(gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {
     gpio_set(CODEC_PORT, CODEC_CS);
@@ -277,9 +270,9 @@ void exti3_isr(void) {
           
           current_track_playing = 0;
           
-          exti_reset_request(EXTI3);
-          exti_disable_request(EXTI3);
-          nvic_disable_irq(NVIC_EXTI3_IRQ);
+          exti_reset_request(EXTI8);
+          exti_disable_request(EXTI8);
+          nvic_disable_irq(NVIC_EXTI9_5_IRQ);
           return;
         } else {
           spi_xfer(CODEC_SPI, fgetc(media_fd));

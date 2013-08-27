@@ -12,7 +12,7 @@ int block_ro;
 
 int block_init() {
   FILE *block_fp;
-  if(!(block_fp = fopen("filesystem.img", "rb"))) {
+  if(!(block_fp = fopen("partitioned.img", "rb"))) {
     return -1;
   }
   fseek(block_fp, 0, SEEK_END);
@@ -59,14 +59,17 @@ int block_write(blockno_t block, void *buffer) {
   return 0;
 }
 
-int block_get_size() {
+int block_get_volume_size() {
+  return block_fs_size / BLOCK_SIZE;
+}
+
+int block_get_block_size() {
   return BLOCK_SIZE;
 }
 
 int block_get_device_read_only() {
   return block_ro;
 }
-
 
 void block_pc_set_ro() {
   block_ro = -1;

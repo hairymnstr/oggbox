@@ -167,7 +167,7 @@ typedef struct {
 // int sdfat_lookup_path(int, const char *);
 // int sdfat_next_sector(int fd);
 
-int fat_mount(blockno_t, uint8_t);
+int fat_mount(blockno_t start, blockno_t volume_size, uint8_t part_type_hint);
 int fat_open(const char *, int, int, int *);
 int fat_close(int, int *);
 int fat_read(int, void *, size_t, int *);

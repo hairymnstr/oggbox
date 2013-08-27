@@ -5,14 +5,14 @@
 
 void usart_clock_setup(void)
 {
-	/* Enable clocks for GPIO port B (for GPIO_USART2_TX) and USART2. */
+	/* Enable clocks for GPIO port A (for GPIO_USART1_TX) and USART1. */
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPAEN);
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_USART1EN);
 }
 
 void usart_setup(void)
 {
-	/* Setup GPIO pin GPIO_USART2_TX/GPIO2 on GPIO port A for transmit. */
+	/* Setup GPIO pin GPIO_USART1_TX/GPIO10 on GPIO port A for transmit. */
 	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
                       GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
 

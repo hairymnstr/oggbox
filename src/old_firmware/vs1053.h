@@ -10,9 +10,9 @@
 #define CODEC_MOSI      GPIO7
 
 #define CODEC_DREQ_PORT GPIOA
-#define CODEC_DREQ      GPIO3
-#define CODEC_RST_PORT  GPIOC
-#define CODEC_RST       GPIO12
+#define CODEC_DREQ      GPIO8
+#define CODEC_RST_PORT  GPIOA
+#define CODEC_RST       GPIO3
 #define CODEC_PWR_PORT  GPIOB
 #define CODEC_PWR       GPIO5
 

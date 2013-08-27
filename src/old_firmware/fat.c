@@ -722,7 +722,7 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
       memcpy(file_num[fd].filename, de->filename, 8);
       memcpy(file_num[fd].extension, de->extension, 3);
       file_num[fd].attributes = de->attributes;
-      file_num[fd].size = de->attributes;
+      file_num[fd].size = de->size;
       if(fatfs.type == PART_TYPE_FAT16) {
         file_num[fd].full_first_cluster = de->first_cluster;
       } else {
@@ -746,75 +746,6 @@ int fat_lookup_path(int fd, const char *path, int *rerrno) {
     }
   }
 
-  return 0;
-}
-
-/**
- * callable file access routines
- */
-
-/**
- * \brief Attempts to mount a partition starting at the addressed block.
- * 
- **/
-int fat_mount(blockno_t part_start, uint8_t filesystem) {
-  int i;
-  boot_sector_fat16 *boot16;
-  boot_sector_fat32 *boot32;
-  
-  fatfs.read_only = block_get_device_read_only();
-  fatfs.type = filesystem;
-  block_read(part_start, fatfs.sysbuf);
-  if(filesystem == PART_TYPE_FAT16) {
-    fatfs.fat_entry_len = 2;
-    fatfs.end_cluster_marker = 0xFFF0;
-    boot16 = (boot_sector_fat16 *)fatfs.sysbuf;
-    fatfs.sectors_per_cluster = boot16->cluster_size;
-    fatfs.root_len = boot16->root_entries;
-    i = part_start;
-    i += boot16->reserved_sectors;
-    fatfs.active_fat_start = i;
-    fatfs.sectors_per_fat = boot16->sectors_per_fat;
-    i += (boot16->sectors_per_fat * boot16->num_fats);
-    fatfs.root_start = i;
-    i += (boot16->root_entries * 32) / 512;
-    i -= (boot16->cluster_size * 2);
-    fatfs.cluster0 = i;
-    fatfs.root_cluster = 1;
-    fatfs.type = PART_TYPE_FAT16;
-    fatfs.part_start = part_start;
-  } else if(filesystem == PART_TYPE_FAT32) {
-    fatfs.fat_entry_len = 4;
-    fatfs.end_cluster_marker = 0xFFFFFF0;
-    boot32 = (boot_sector_fat32 *)fatfs.sysbuf;
-    fatfs.sectors_per_cluster = boot32->cluster_size;
-    i = part_start;
-    i += boot32->reserved_sectors;
-    fatfs.active_fat_start = i;
-    fatfs.sectors_per_fat = boot32->sectors_per_fat;
-    i += boot32->sectors_per_fat * boot32->num_fats;
-    i -= boot32->cluster_size * 2;
-    fatfs.cluster0 = i;
-    fatfs.root_cluster = boot32->root_start;
-  } else {
-    return -1;
-  }
-  
-#ifdef DEBUG
-  printf("read_only: %d\n", fatfs.read_only);
-  printf("fat_entry_len: %d\n", fatfs.fat_entry_len);
-  printf("end_cluster_marker: %d\n", fatfs.end_cluster_marker);
-  printf("sectors_per_cluster: %d\n", fatfs.sectors_per_cluster);
-  printf("cluster0: %d\n", fatfs.cluster0);
-  printf("active_fat_start: %d\n", fatfs.active_fat_start);
-  printf("sectors_per_fat: %d\n", fatfs.sectors_per_fat);
-  printf("root_len: %d\n", fatfs.root_len);
-  printf("root_start: %d\n", fatfs.root_start);
-  printf("root_cluster: %d\n", fatfs.root_cluster);
-  printf("type: %d\n", fatfs.type);
-  printf("part_start: %d\n", fatfs.part_start);
-#endif
-  
   return 0;
 }
 
@@ -1056,6 +987,37 @@ int fat_mount_fat32(blockno_t start, blockno_t volume_size) {
   fatfs.part_start = start;
   
   return 0;
+}
+
+/**
+ * callable file access routines
+ */
+
+/**
+ * \brief Attempts to mount a partition starting at the addressed block.
+ * 
+ **/
+int fat_mount(blockno_t part_start, blockno_t volume_size, uint8_t filesystem_hint) {
+  if(filesystem_hint == PART_TYPE_FAT16) {
+    // try FAT16 first
+    if(fat_mount_fat16(part_start, volume_size) == 0) {
+      return 0;
+    } else {
+      // try FAT32 as a fallback
+      if(fat_mount_fat32(part_start, volume_size) == 0) {
+        return 0;
+      }
+    }
+  } else {
+    if(fat_mount_fat32(part_start, volume_size) == 0) {
+      return 0;
+    } else {
+      if(fat_mount_fat16(part_start, volume_size) == 0) {
+        return 0;
+      }
+    }
+  }
+  return -1;            // no FAT type working
 }
 
 int fat_open(const char *name, int flags, int mode, int *rerrno) {
@@ -1328,12 +1290,17 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
   old_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor;
   if(dir == SEEK_SET) {
     new_pos = ptr;
+//     iprintf("lseek(%d, %d, SEEK_SET) old_pos = %d, new_pos = %d\r\n", fd, ptr, old_pos, new_pos);
   } else if(dir == SEEK_CUR) {
     new_pos = file_num[fd].file_sector * 512 + file_num[fd].cursor + ptr;
+//     iprintf("lseek(%d, %d, SEEK_CUR) old_pos = %d, new_pos = %d\r\n", fd, ptr, old_pos, new_pos);
   } else {
     new_pos = file_num[fd].size + ptr;
+//     iprintf("lseek(%d, %d, SEEK_END) old_pos = %d, new_pos = %d\r\n", fd, ptr, old_pos, new_pos);
   }
+//   iprintf("Seeking in %d byte file.\r\n", file_num[fd].size);
   if(new_pos > file_num[fd].size) {
+//     iprintf("seek beyond file.\r\n");
     return ptr-1; /* tried to seek outside a file */
   }
   // optimisation cases
@@ -1348,6 +1315,7 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
     file_num[fd].sectors_left = file_num[fd].sectors_left + (new_pos/512) - (old_pos/512);
     file_num[fd].cursor = new_pos & 0x1ff;
     if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
+//       iprintf("Bad block read.\r\n");
       return ptr - 1;
     }
     return new_pos;
@@ -1370,6 +1338,7 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
   file_num[fd].sectors_left = fatfs.sectors_per_cluster - new_sec - 1;
   if(block_read(file_num[fd].sector, file_num[fd].buffer)) {
     return ptr-1;
+//     iprintf("Bad block read 2.\r\n");
   }
   return new_pos;
 }

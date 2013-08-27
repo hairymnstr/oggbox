@@ -6,6 +6,7 @@
 #include "fat.h"
 #include "block.h"
 #include "block_pc.h"
+#include "partition.h"
 #include "mbr.h"
 
 /**************************************************************
@@ -113,15 +114,41 @@ int main(int argc, char *argv[]) {
   FILE *fp;
   int len;
   uint8_t *d;
+  int result;
+  int parts;
+  uint8_t temp[512];
+  struct partition *part_list;
+  
 //   int v;
   printf("Running FAT tests...\n\n");
   printf("[%4d] start block device emulation...", p++);
   printf("   %d\n", block_init());
   
   printf("[%4d] mount filesystem, FAT32", p++);
-  printf("   %d\n", fat_mount(0, PART_TYPE_FAT32));
+  
+  result = fat_mount(0, block_get_volume_size(), PART_TYPE_FAT32);
 
-//   p = test_open(p);
+  printf("   %d\n", result);
+
+  if(result != 0) {
+    // mounting failed.
+    // try listing the partitions
+    block_read(0, temp);
+    parts = read_partition_table(temp, block_get_volume_size(), &part_list);
+    
+    printf("Found %d valid partitions.\n", parts);
+    
+    if(parts > 0) {
+      result = fat_mount(part_list[0].start, part_list[0].length, part_list[0].type);
+    }
+    if(result != 0) {
+      printf("Mount failed\n");
+      exit(-2);
+    }
+    
+  }
+  
+  //   p = test_open(p);
 
   int fd;
   

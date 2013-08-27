@@ -5,6 +5,6 @@
 *.srec
 *.elf
 *.d
-filesystem.img
+*.img
 test_fat
 *order.ods

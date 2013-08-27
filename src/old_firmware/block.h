@@ -31,7 +31,8 @@ typedef uint32_t blockno_t;
 int block_init();
 int block_read(blockno_t, void *);
 int block_write(blockno_t, void *);
-int block_get_size();
+int block_get_volume_size();
+int block_get_block_size();
 int block_get_device_read_only();
 
 #endif /* ifndef BLOCK_H */

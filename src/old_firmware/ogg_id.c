@@ -38,7 +38,7 @@ uint32_t ogg_track_length_millis(char *filename) {
     buf[2] = buf[1];
     buf[1] = buf[0];
     read(fd, &buf[0], 1);
-      
+    
     if(lseek(fd, 0, SEEK_CUR) > 1) {
       lseek(fd, -2, SEEK_CUR);
     } else {

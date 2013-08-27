@@ -1,5 +1,6 @@
 #include "config.h"
 #include "fat.h"
+#include "nd_usart.h"
 #include <libopencm3/stm32/f1/rtc.h>
 #include <libopencm3/stm32/usart.h>
 #include <stdio.h>
@@ -10,6 +11,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/time.h>
+
+const char *seek_str[] = {
+  "SEEK_SET",
+  "SEEK_CUR",
+  "SEEK_END",
+};
 
 /**
  *  write_std_out - writes len bytes from char *buffer to the "standard out"
@@ -63,7 +70,7 @@ int _stat(char *file, struct stat *st) {
 int _fstat (int fd, struct stat * st) {
   int rerr;
   write_std_out("_fstat", 6);
-  write_std_out((char *)&fd, 4);
+  usart_dec_u32(fd);
   write_std_out("\r\n", 2);
   if (fd == STDOUT_FILENO) {
     memset(st, 0, sizeof (* st));
@@ -108,13 +115,17 @@ int _isatty(int fd) {
 }
 
 int _lseek(int fd, int ptr, int dir) {
-  int rerr;
+  int rerr, v;
 //   iprintf("_lseek %d, %d, %d\r\n", fd, ptr, dir);
   if(fd < FIRST_DISC_FILENO) {
     // tried to seek on stdin/out/err
     return ptr-1;
   }
-  return fat_lseek(fd - FIRST_DISC_FILENO, ptr, dir, &rerr);
+  v = fat_lseek(fd - FIRST_DISC_FILENO, ptr, dir, &rerr);
+  if(v == ptr-1) {
+    iprintf("Lseek(%d, %d, %s) errno=%d\r\n", fd, ptr, seek_str[dir], rerr);
+  }
+  return v;
 }
 
 int _open_r(struct _reent *ptr, const char *name, int flags, int mode) {
