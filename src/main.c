@@ -4,8 +4,13 @@
 #include <libopencm3/stm32/f1/rtc.h>
 #include <libopencm3/cm3/systick.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "FreeRTOS.h"
+#include "block.h"
+#include "fat.h"
+#include "vs1053.h"
 #include "task.h"
+#include "partition.h"
 #include "oggbox.h"
 
 #define mainFLASH_DELAY 1000
@@ -33,24 +38,30 @@ void hardware_setup() {
 
 }
 
-static void FlashLEDTask( void *pvParameters )
-{
-    portTickType xLastExecutionTime;
-
-    /* Initialise the xLastExecutionTime variable on task entry. */
-    xLastExecutionTime = xTaskGetTickCount();
+static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
 
     while(1) {
         /* Simple toggle the LED periodically.  This just provides some timing
             verification. */
         vTaskDelay(1000);
-        gpio_toggle(GREEN_LED_PORT, GREEN_LED_PIN);
+        gpio_toggle(RED_LED_PORT, RED_LED_PIN);
     }
 }
 
-int main(void) {
-  hardware_setup();
+void aux_power_on() {
+  gpio_set(AUX_POWER_PORT, AUX_POWER_PIN);
+}
 
+int main(void) {
+  int r, i, mounted=0;
+  uint8_t buffer[512];
+  struct partition *part_list;
+  hardware_setup();
+  /* configure the UART for printf debug console */
+  usart_clock_setup();
+  usart_setup();
+        
+  aux_power_on();
 
   // setup the systick counter for timeouts etc.
   systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);
@@ -58,8 +69,34 @@ int main(void) {
   systick_set_reload(6000);
   // reload every millisecond
   
-  xTaskCreate( FlashLEDTask, "LED", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, NULL);
-
+  iprintf("==================================================\r\n");
+  r = block_init();
+  iprintf("Block init: %d\r\n", r);
+  if(r == 0) {
+    r = fat_mount(0, block_get_volume_size(), 0);
+    iprintf("Mount card root: %d\r\n", r);
+    if(r != 0) {
+      block_read(0, buffer);
+      r = read_partition_table(buffer, block_get_volume_size(), &part_list);
+      iprintf("Found %d partitions\r\n", r);
+      if(r > 0) {
+        for(i=0;i<r;i++) {
+          if(fat_mount(part_list[i].start, part_list[i].length, part_list[i].type) == 0) {
+            iprintf("Mounted partition %d\r\n", i);
+            mounted = 1;
+            break;
+          }
+        }
+      }
+    } else {
+      mounted = 1;
+    }
+  }
+  
+  xTaskCreate( FlashLEDTask, (const signed char * const)"LED", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, NULL);
+  
+  start_player_task();
+  
   vTaskStartScheduler();
 
   // the previous call should never return

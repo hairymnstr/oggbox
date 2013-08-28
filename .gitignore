@@ -8,3 +8,5 @@
 *.img
 test_fat
 *order.ods
+*order?.ods
+src/FreeRTOS/Demo
