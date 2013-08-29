@@ -11,7 +11,8 @@
 #include "vs1053.h"
 #include "task.h"
 #include "partition.h"
-#include "oggbox.h"
+#include "power.h"
+#include "config.h"
 
 #define mainFLASH_DELAY 1000
 #define LED_TASK_PRIORITY ( tskIDLE_PRIORITY + 0 )
@@ -39,12 +40,12 @@ void hardware_setup() {
 }
 
 static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
-
     while(1) {
         /* Simple toggle the LED periodically.  This just provides some timing
             verification. */
         vTaskDelay(1000);
         gpio_toggle(RED_LED_PORT, RED_LED_PIN);
+        iprintf("Battery voltage = %d.%03d\r\n", power_latest_battery() / 1000, power_latest_battery() % 1000);
     }
 }
 
@@ -65,8 +66,8 @@ int main(void) {
 
   // setup the systick counter for timeouts etc.
   systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);
-  // 6000000 counts per second @ 48MHz
-  systick_set_reload(6000);
+  // 9000000 counts per second @ 72MHz
+  systick_set_reload(9000);
   // reload every millisecond
   
   iprintf("==================================================\r\n");
@@ -96,6 +97,8 @@ int main(void) {
   xTaskCreate( FlashLEDTask, (const signed char * const)"LED", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, NULL);
   
   start_player_task();
+  
+  start_power_management_task();
   
   vTaskStartScheduler();
 

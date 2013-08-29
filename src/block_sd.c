@@ -20,9 +20,9 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
-#include "oggbox.h"
 #include "block_sd.h"
 #include "block.h"
+#include "config.h"
 
 SDCard card = {0, 0, 0, 0};
 /**
@@ -88,7 +88,7 @@ int sd_card_reset() {
 #endif
 
   /* make sure the card is de-selected */
-  gpio_set(SD_PORT, SD_CS);
+  gpio_set(SD_PORT, SD_CS_PIN);
 
   /* send more than 80 clock pulses */
   for(i=0;i<20;i++) {
@@ -96,7 +96,7 @@ int sd_card_reset() {
   }
 
   /* set chip select low again */
-  gpio_clear(SD_PORT, SD_CS);
+  gpio_clear(SD_PORT, SD_CS_PIN);
 
 //  for(i=0;i<1000;i++);
 
@@ -243,20 +243,20 @@ int block_init() {
 
     /* need to do the IO pins */
   gpio_set_mode(SD_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-                GPIO_CNF_OUTPUT_PUSHPULL, SD_CS);
+                GPIO_CNF_OUTPUT_PUSHPULL, SD_CS_PIN);
   gpio_set_mode(SD_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-                GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, SD_MOSI);
+                GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, SD_MOSI_PIN);
   gpio_set_mode(SD_PORT, GPIO_MODE_OUTPUT_50_MHZ,
-                GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, SD_SCK);
+                GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, SD_SCK_PIN);
   gpio_set_mode(SD_PORT,GPIO_MODE_INPUT,
-                GPIO_CNF_INPUT_FLOAT, SD_MISO);
-#ifdef SD_WP
+                GPIO_CNF_INPUT_FLOAT, SD_MISO_PIN);
+#ifdef SD_WP_PIN
   gpio_set_mode(SD_WP_PORT, GPIO_MODE_INPUT,
-                GPIO_CNF_INPUT_FLOAT, SD_WP);
+                GPIO_CNF_INPUT_FLOAT, SD_WP_PIN);
 #endif
-#ifdef SD_CP
+#ifdef SD_CP_PIN
   gpio_set_mode(SD_CP_PORT, GPIO_MODE_INPUT,
-                GPIO_CNF_INPUT_FLOAT, SD_CP);
+                GPIO_CNF_INPUT_FLOAT, SD_CP_PIN);
 #endif
 
   /* configure the SPI peripheral */

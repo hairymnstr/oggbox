@@ -1,36 +1,7 @@
 #ifndef VS1053_H
 #define VS1053_H 1
 
-#include <stdint.h>
-
-#define CODEC_PORT      GPIOA
-#define CODEC_CS        GPIO4
-#define CODEC_SCK       GPIO5
-#define CODEC_MISO      GPIO6
-#define CODEC_MOSI      GPIO7
-
-#define CODEC_DREQ_PORT GPIOA
-#define CODEC_DREQ      GPIO8
-#define CODEC_RST_PORT  GPIOA
-#define CODEC_RST       GPIO3
-#define CODEC_PWR_PORT  GPIOB
-#define CODEC_PWR       GPIO5
-
-#define CODEC_IOS_APB   RCC_APB2ENR
-#define CODEC_RCC_IOS   RCC_APB2ENR_IOPAEN
-
-#define CODEC_PWR_APB   RCC_APB2ENR
-#define CODEC_RCC_PWR   RCC_APB2ENR_IOPBEN
-
-#define CODEC_IOI_APB   RCC_APB2ENR
-#define CODEC_RCC_IOI   RCC_APB2ENR_IOPCEN
-
-#define CODEC_SPI       SPI1
-#define CODEC_SPI_APB   RCC_APB2ENR
-#define CODEC_RCC_SPI   RCC_APB2ENR_SPI1EN
-
 /* address constants on the co-processor */
-
 #define SCI_MODE        0x0
 #define SCI_STATUS      0x1
 #define SCI_BASS        0x2
@@ -80,8 +51,7 @@ void init_codec();
 void demo_codec();
 void play_file(char *);
 
-void play_file_fast_async(char *);
+void start_player_task();
 
-//sstatic void player_task(void *);
 #endif
 
