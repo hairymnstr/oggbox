@@ -41,10 +41,17 @@
 #define PARAM_POSITION_LO   0x1e27
 #define PARAM_POSITION_HI   0x1e28    /* Ogg file playback position */
 
+#define PLAYER_VOLUME_COMMAND 1
+
 struct player_status {
   int byte_count;
   int playing;
   uint32_t pos;
+};
+
+struct player_job {
+  int type;
+  int data;
 };
 
 void init_codec();

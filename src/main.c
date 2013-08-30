@@ -6,17 +6,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
+
 #include "block.h"
 #include "fat.h"
 #include "vs1053.h"
-#include "task.h"
 #include "partition.h"
 #include "power.h"
+#include "interface.h"
 #include "config.h"
 
 #define mainFLASH_DELAY 1000
 #define LED_TASK_PRIORITY ( tskIDLE_PRIORITY + 0 )
 #define LED_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 50)
+
+xQueueHandle player_queue;
 
 void hardware_setup() {
   
@@ -37,6 +42,10 @@ void hardware_setup() {
   gpio_set_mode(GREEN_LED_PORT, GPIO_MODE_OUTPUT_2_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, RED_LED_PIN | GREEN_LED_PIN);
 
+}
+
+void queue_setup() {
+  player_queue = xQueueCreate(10, sizeof(struct player_job));
 }
 
 static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
@@ -94,11 +103,15 @@ int main(void) {
     }
   }
   
+  queue_setup();
+  
   xTaskCreate( FlashLEDTask, (const signed char * const)"LED", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, NULL);
   
   start_player_task();
   
   start_power_management_task();
+  
+  start_interface_task();
   
   vTaskStartScheduler();
 

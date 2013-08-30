@@ -33,7 +33,7 @@ LDFLAGS		+= -Wl,--start-group -lc -lgcc -Wl,--end-group \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
 OBJS		+= main.o vs1053.o block_sd.o fat.o syscalls.o partition.o nd_usart.o \
-		   power.o \
+		   power.o interface.o \
 		   list.o queue.o tasks.o port.o heap_1.o
 
 # Be silent per default, but 'make V=1' will show all compiler calls.

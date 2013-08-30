@@ -26,9 +26,12 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
-#include "vs1053.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
+
+#include "vs1053.h"
 #include "config.h"
 
 
@@ -39,6 +42,7 @@ volatile struct player_status current_track;
 volatile int current_track_playing;
 FILE *media_fd;
 ssize_t media_byte_len;
+extern xQueueHandle player_queue;
 
 /**
  *  PRIVATE FUNCTION
@@ -169,6 +173,8 @@ void demo_codec() {
 static void player_task(void *parameters __attribute__((unused))) {
   int i, j;
   uint16_t endFillByte;
+  struct player_job job_to_do;
+  int jobs_serviced;
   char filename[] = "/20lbSo~1.ogg";
   
   // do setup stuff
@@ -208,6 +214,9 @@ static void player_task(void *parameters __attribute__((unused))) {
           }
           if((ftell(media_fd) % 4096) == 0) {
             gpio_clear(CODEC_PORT, CODEC_CS);
+            
+            // take this opportunity to do any jobs that involve the control registers in the
+            // codec chip
             /* fetch the value of current decode position */
             vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_LO);
             for(i=0;i<150;i++) {__asm__("nop\n\t");}
@@ -216,7 +225,30 @@ static void player_task(void *parameters __attribute__((unused))) {
             vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_HI);
             for(i=0;i<150;i++) {__asm__("nop\n\t");}
             current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
+            for(i=0;i<150;i++) {__asm__("nop\n\t");}
             gpio_set(CODEC_PORT, CODEC_CS);
+            
+            jobs_serviced = 0;
+            // now check the job list for any other jobs that need doing
+            while(xQueueReceive(player_queue, &job_to_do, 0) == pdTRUE) {
+              jobs_serviced++;
+              
+              switch(job_to_do.type) {
+                case PLAYER_VOLUME_COMMAND:
+                  // set the volume of the codec chip
+                  vs1053_SCI_write(SCI_VOL, job_to_do.data);
+                  for(i=0;i<150;i++) {__asm__("nop\n\t");}
+                  
+                  break;
+                default:
+                  // dunno what you mean :P
+                  break;
+              }
+              
+              if(jobs_serviced == 5) {
+                break;          // don't do too many jobs in one go, don't want the player to stutter
+              }
+            }
           }
         } else {
           for(i=0;i<32;i++) {

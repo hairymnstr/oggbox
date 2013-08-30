@@ -94,6 +94,13 @@
 #define CHG_500_PORT  GPIOC
 #define CHG_500_PIN   GPIO12
 
+// Button definitions
+#define VOL_UP_PORT     GPIOC
+#define VOL_UP_PIN      GPIO6
+
+#define VOL_DOWN_PORT   GPIOC
+#define VOL_DOWN_PIN    GPIO7
+
 // stdio definitions
 #define STD_OUT_UART  USART1
 #define STD_ERR_UART  USART1
