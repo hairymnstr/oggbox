@@ -1,21 +1,24 @@
-#include <stdio.h>
 #include <libopencm3/stm32/f1/gpio.h>
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/adc.h>
+
+#include <stdio.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include "usb.h"
 #include "power.h"
 #include "config.h"
 
 #define POWER_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define POWER_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 200)
+#define POWER_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2048)
 
 struct power_info power_status = {
   0,
 };
 
 void power_init() {
-  int i;
   
   // set up clocks for battery reading
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_ADC2EN);
@@ -81,11 +84,13 @@ static void power_management_task(void *parameters __attribute__((unused))) {
   int battery_voltage;
 
   power_init();
+  usb_init();   // USB interface is mainly for charging so take care of it here for now
   while(1) {
     // just keep updating the power status structure so other tasks can query it
     battery_voltage = power_read_battery();
 //     usb_power = power_check_usb();
 //     update_charge_current();
+    usb_sys_tick_handler();
     
     portENTER_CRITICAL();
     power_status.battery_voltage = battery_voltage;
@@ -103,4 +108,34 @@ void start_power_management_task() {
 // these functions can be called from other threads
 int power_latest_battery() {
   return power_status.battery_voltage;
+}
+
+void power_set_charge_full() {
+  gpio_clear(CHG_500_PORT, CHG_500_PIN);
+  gpio_set_mode(CHG_500_PORT, GPIO_MODE_OUTPUT_2_MHZ,
+                GPIO_CNF_OUTPUT_PUSHPULL, CHG_500_PIN);
+  gpio_set_mode(CHG_100_PORT, GPIO_MODE_INPUT,
+                GPIO_CNF_INPUT_FLOAT, CHG_100_PIN);
+}
+
+void power_set_charge_slow() {
+  gpio_set_mode(CHG_500_PORT, GPIO_MODE_INPUT,
+                GPIO_CNF_INPUT_FLOAT, CHG_500_PIN);
+  gpio_set_mode(CHG_100_PORT, GPIO_MODE_INPUT,
+                GPIO_CNF_INPUT_FLOAT, CHG_100_PIN);
+}
+
+void power_set_charge_none() {
+  gpio_set_mode(CHG_500_PORT, GPIO_MODE_INPUT,
+                GPIO_CNF_INPUT_FLOAT, CHG_500_PIN);
+  gpio_clear(CHG_100_PORT, CHG_100_PIN);
+  gpio_set_mode(CHG_100_PORT, GPIO_MODE_OUTPUT_2_MHZ,
+                GPIO_CNF_OUTPUT_PUSHPULL, CHG_100_PIN);
+}
+
+int power_get_usb_present() {
+  if(gpio_get(USB_P_PORT, USB_P_PIN)) {
+    return 1;
+  }
+  return 0;
 }

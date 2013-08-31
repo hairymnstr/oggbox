@@ -23,6 +23,8 @@
 #include <libopencm3/stm32/f1/nvic.h>
 #include <libopencm3/stm32/exti.h>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
@@ -197,6 +199,12 @@ static void player_task(void *parameters __attribute__((unused))) {
     current_track_playing = 1;
 
     media_fd = fopen(filename, "rb");
+    if(media_fd == 0) {
+      iprintf("Failed to open media file: %s\r\n", strerror(errno));
+      while(1) {
+        vTaskDelay(1000);
+      }
+    }
     fseek(media_fd, 0, SEEK_END);
     media_byte_len = ftell(media_fd);
     fseek(media_fd, 0, SEEK_SET);

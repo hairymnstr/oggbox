@@ -86,20 +86,22 @@ int _fstat (int fd, struct stat * st) {
   }
 }
 
-register char *stack_ptr asm ("sp");
 caddr_t _sbrk_r(void *reent __attribute__((__unused__)), size_t incr) {
   extern char end asm ("end");  // Defined by the linker
+  extern char _stack asm ("_stack");
   static char *heap_end;
   char *prev_heap_end;
 
-  write_std_out("_sbrk\r\n", 6);
+  write_std_out("_sbrk", 5);
+  usart_dec_u16((uint16_t)incr);
+  write_std_out("\r\n", 2);
 
   if( heap_end == NULL )
     heap_end = &end;
   prev_heap_end = heap_end;
 
-  if(( heap_end + incr ) > stack_ptr ) {
-    write_std_out("heap<>stack collision\n", 22);
+  if(( heap_end + incr ) > &_stack ) {
+    write_std_out("heap<>stack collision\r\n", 23);
     //exit(1);
     return (caddr_t) -1;
   }
@@ -131,8 +133,10 @@ int _lseek(int fd, int ptr, int dir) {
 int _open_r(struct _reent *ptr, const char *name, int flags, int mode) {
   int i;
   int rerrno;
+  
   i = fat_open(name, flags, mode, &rerrno);
 
+  iprintf("rerrno: %d\r\n", rerrno);
   if(i<0) {
     ptr->_errno = rerrno;
     i = -1;

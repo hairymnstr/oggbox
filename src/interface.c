@@ -1,19 +1,29 @@
 #include <libopencm3/stm32/f1/gpio.h>
+
+#include <stdio.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+
 #include "vs1053.h"
+#include "screen.h"
+#include "power.h"
+#include "usb.h"
 #include "interface.h"
 #include "config.h"
 
-#define INTERFACE_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 500)
+#define INTERFACE_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2048)
 #define INTERFACE_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
 
 extern xQueueHandle player_queue;
 
 static void interface_task(void *parameter __attribute__((unused))) {
   int volume = 16;
+  char msg[30];
   struct player_job player_job_to_do;
+  
+  screen_init();
   
   while(1) {
     // check the buttons
@@ -33,6 +43,20 @@ static void interface_task(void *parameter __attribute__((unused))) {
     }
     
     // update the screen
+    
+    frame_clear();
+    
+    if(usb_get_status() == USB_STATUS_ACTIVE) {
+      frame_print_at(20, 100, "data");
+    } else if(usb_get_status() == USB_STATUS_CHARGER) {
+      frame_print_at(11, 100, "charger");
+    }
+      
+    
+    sniprintf(msg, 10, "%d.%03dV", power_latest_battery() / 1000, power_latest_battery() % 1000);
+    frame_print_at(14,120,msg);
+    
+    frame_show();
     
     vTaskDelay(100);
   }

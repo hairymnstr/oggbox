@@ -25,10 +25,13 @@ xQueueHandle player_queue;
 
 void hardware_setup() {
   
-  rcc_clock_setup_in_hse_8mhz_out_72mhz();
+//   rcc_clock_setup_in_hse_8mhz_out_72mhz();
+  rcc_clock_setup_in_hsi_out_48mhz();
+  rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPAEN);
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPBEN);
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPDEN);
+  rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
 
   /* set the AUX_POWER line to on all the time, turning this off causes an error
      condition on the SPI bus to the CODEC.  In RevB this line is used for sensing
@@ -42,6 +45,8 @@ void hardware_setup() {
   gpio_set_mode(GREEN_LED_PORT, GPIO_MODE_OUTPUT_2_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, RED_LED_PIN | GREEN_LED_PIN);
 
+  /* Turn off the JTAG port until next reset */
+  AFIO_MAPR = AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_OFF;
 }
 
 void queue_setup() {
@@ -74,9 +79,9 @@ int main(void) {
   aux_power_on();
 
   // setup the systick counter for timeouts etc.
-  systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);
+//   systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);
   // 9000000 counts per second @ 72MHz
-  systick_set_reload(9000);
+//   systick_set_reload(9000);
   // reload every millisecond
   
   iprintf("==================================================\r\n");

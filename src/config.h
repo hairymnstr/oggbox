@@ -36,8 +36,8 @@
 #define LCD_RST_PIN   GPIO6
 #define LCD_BL_PORT   GPIOB
 #define LCD_BL_PIN    GPIO8
-#define LCD_A0_PORT   GPIOB
-#define LCD_A0_PIN    GPIO9
+#define LCD_DC_PORT   GPIOB
+#define LCD_DC_PIN    GPIO9
 #define LCD_MOSI_PORT GPIOB
 #define LCD_MOSI_PIN  GPIO5
 #define LCD_SCK_PORT  GPIOB
@@ -100,6 +100,10 @@
 
 #define VOL_DOWN_PORT   GPIOC
 #define VOL_DOWN_PIN    GPIO7
+
+// USB stuff
+#define USB_DISC_PORT   GPIOA
+#define USB_DISC_PIN    GPIO2
 
 // stdio definitions
 #define STD_OUT_UART  USART1
