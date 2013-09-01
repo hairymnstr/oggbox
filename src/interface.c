@@ -1,6 +1,7 @@
 #include <libopencm3/stm32/f1/gpio.h>
 
 #include <stdio.h>
+#include <string.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -18,12 +19,112 @@
 
 extern xQueueHandle player_queue;
 
+// Now playing screen, shows title, artist and progress
+void interface_now_playing() {
+  char *msg;
+  static int artist_dir = -1;
+  static int artist_index = 0;
+  static int title_dir = -1;
+  static int title_index = 0;
+  static int album_dir = -1;
+  static int album_index = 0;
+  char buf[12];
+  
+  if(player_is_playing()) {
+    msg = player_get_artist();
+    frame_print_at(artist_index,24,msg);
+    if(strlen(msg) > 10) {
+      // need to scroll the artist name
+      if(artist_dir == 1) {
+        if(artist_index == 0) {
+          artist_dir = -10;
+        } else {
+          artist_index += artist_dir;
+        }
+      } else if(artist_dir == -1) {
+        if(artist_index == (((int)strlen(msg) * -6) + 64)) {
+          artist_dir = 10;
+        } else {
+          artist_index += artist_dir;
+        }
+      } else {
+        if(artist_dir > 0) {
+          artist_dir --;
+        } else {
+          artist_dir ++;
+        }
+      }
+    } else {
+      artist_index = 0;
+    }
+    
+    msg = player_get_title();
+    frame_print_at(title_index,32,msg);
+    if(strlen(msg) > 10) {
+      // need to scroll the artist name
+      if(title_dir == 1) {
+        if(title_index == 0) {
+          title_dir = -10;
+        } else {
+          title_index += title_dir;
+        }
+      } else if(title_dir == -1) {
+        if(title_index == (((int)strlen(msg) * -6) + 64)) {
+          title_dir = 10;
+        } else {
+          title_index += title_dir;
+        }
+      } else {
+        if(title_dir > 0) {
+          title_dir --;
+        } else {
+          title_dir ++;
+        }
+      }
+    } else {
+      title_index = 0;
+    }
+    
+    msg = player_get_album();
+    frame_print_at(album_index,40,msg);
+    if(strlen(msg) > 10) {
+      // need to scroll the artist name
+      if(album_dir == 1) {
+        if(album_index == 0) {
+          album_dir = -10;
+        } else {
+          album_index += album_dir;
+        }
+      } else if(album_dir == -1) {
+        if(album_index == (((int)strlen(msg) * -6) + 64)) {
+          album_dir = 10;
+        } else {
+          album_index += album_dir;
+        }
+      } else {
+        if(album_dir > 0) {
+          album_dir --;
+        } else {
+          album_dir ++;
+        }
+      }
+    } else {
+      album_index = 0;
+    }
+    
+    sniprintf(buf, sizeof(buf), "%3lu%%", (100 * player_get_position()) / player_get_length());
+    frame_print_at(12,56,buf);
+  }
+}
+
 static void interface_task(void *parameter __attribute__((unused))) {
   int volume = 16;
   char msg[30];
   struct player_job player_job_to_do;
   
   screen_init();
+  
+  screen_backlight(65535);
   
   while(1) {
     // check the buttons
@@ -53,9 +154,12 @@ static void interface_task(void *parameter __attribute__((unused))) {
     }
       
     
+    sniprintf(msg, 10, "%3d.%ddB", -1 * (volume / 2), ((volume & 1) * 5));
+    frame_print_at(8, 112,msg);
     sniprintf(msg, 10, "%d.%03dV", power_latest_battery() / 1000, power_latest_battery() % 1000);
     frame_print_at(14,120,msg);
     
+    interface_now_playing();
     frame_show();
     
     vTaskDelay(100);

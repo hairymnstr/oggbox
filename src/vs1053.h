@@ -46,7 +46,11 @@
 struct player_status {
   int byte_count;
   int playing;
-  uint32_t pos;
+  uint32_t position;
+  uint32_t length;
+  char *artist_name;
+  char *album_title;
+  char *track_title;
 };
 
 struct player_job {
@@ -59,6 +63,13 @@ void demo_codec();
 void play_file(char *);
 
 void start_player_task();
+
+char *player_get_artist();
+char *player_get_title();
+char *player_get_album();
+uint32_t player_get_position();
+uint32_t player_get_length();
+int player_is_playing();
 
 #endif
 

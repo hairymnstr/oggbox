@@ -33,6 +33,7 @@
 #include "task.h"
 #include "queue.h"
 
+#include "ogg_meta.h"
 #include "vs1053.h"
 #include "config.h"
 
@@ -45,6 +46,10 @@ volatile int current_track_playing;
 FILE *media_fd;
 ssize_t media_byte_len;
 extern xQueueHandle player_queue;
+
+const char *jimmy_album_title = "Bubbleino EP";
+const char *jimmy_artist_name = "20lb Sounds";
+const char *jimmy_track_title = "Jimmy Carter";
 
 /**
  *  PRIVATE FUNCTION
@@ -176,8 +181,10 @@ static void player_task(void *parameters __attribute__((unused))) {
   int i, j;
   uint16_t endFillByte;
   struct player_job job_to_do;
+  struct meta metainfo;
   int jobs_serviced;
-  char filename[] = "/20lbSo~1.ogg";
+//   char filename[] = "/20lbSo~1.ogg";
+  char filename[] = "/06-Fol~1.ogg";
   
   // do setup stuff
   init_codec();
@@ -205,6 +212,22 @@ static void player_task(void *parameters __attribute__((unused))) {
         vTaskDelay(1000);
       }
     }
+    
+    current_track.length = ogg_track_length_millis(media_fd);
+    fseek(media_fd, 0, SEEK_SET);
+    if(read_standard_tags(media_fd, &metainfo) == 0) {
+      current_track.artist_name = metainfo.artist;
+      current_track.album_title = metainfo.album;
+      current_track.track_title = metainfo.title;
+    } else {
+      strncpy(metainfo.artist, "Unknown", META_STR_LEN);
+      strncpy(metainfo.album, "Unknown", META_STR_LEN);
+      strncpy(metainfo.title, filename, META_STR_LEN);
+      current_track.artist_name = metainfo.artist;
+      current_track.album_title = metainfo.album;
+      current_track.track_title = metainfo.title;
+    }
+    
     fseek(media_fd, 0, SEEK_END);
     media_byte_len = ftell(media_fd);
     fseek(media_fd, 0, SEEK_SET);
@@ -228,11 +251,11 @@ static void player_task(void *parameters __attribute__((unused))) {
             /* fetch the value of current decode position */
             vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_LO);
             for(i=0;i<150;i++) {__asm__("nop\n\t");}
-            current_track.pos = vs1053_SCI_read(SCI_WRAM);
+            current_track.position = vs1053_SCI_read(SCI_WRAM);
             for(i=0;i<150;i++) {__asm__("nop\n\t");}
             vs1053_SCI_write(SCI_WRAMADDR, PARAM_POSITION_HI);
             for(i=0;i<150;i++) {__asm__("nop\n\t");}
-            current_track.pos += vs1053_SCI_read(SCI_WRAM) << 16;
+            current_track.position += vs1053_SCI_read(SCI_WRAM) << 16;
             for(i=0;i<150;i++) {__asm__("nop\n\t");}
             gpio_set(CODEC_PORT, CODEC_CS);
             
@@ -330,4 +353,31 @@ void start_player_task() {
   
   xTaskCreate( player_task, (const signed char * const)"PLAYER", PLAYER_TASK_STACK_SIZE, NULL, PLAYER_TASK_PRIORITY, NULL);
   
+}
+
+char *player_get_artist() {
+  return current_track.artist_name;
+}
+
+char *player_get_title() {
+  return current_track.track_title;
+}
+
+char *player_get_album() {
+  return current_track.album_title;
+}
+
+uint32_t player_get_length() {
+  return current_track.length;
+}
+
+uint32_t player_get_position() {
+  return current_track.position;
+}
+
+int player_is_playing() {
+  if(current_track_playing) {
+    return 1;
+  }
+  return 0;
 }

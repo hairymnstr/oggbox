@@ -4,6 +4,7 @@
 // Screen and Font Metrics
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
+#define SCREEN_OFFSET 0
 #define FONT_WIDTH 6
 #define FONT_HEIGHT 8
 
@@ -47,18 +48,14 @@
 void lcdCommand(unsigned char);
 void lcdData(unsigned char);
 void screen_init();
-int lcd_shutdown();
-void lcdClear();
-void lcdBacklight(unsigned short);
-void lcdPrint(char *, char);
-void lcdBlit(unsigned char *img, unsigned char rows, unsigned char cols, unsigned char x, unsigned char y);
-void lcdBlitPortrait(unsigned char *img, unsigned char rows, unsigned char cols, unsigned char x, unsigned char y);
+int screen_shutdown();
+void screen_backlight(unsigned short);
 
 void lcd_set_contrast(unsigned char);
 unsigned char lcd_get_contrast();
 
 void frame_clear();
-void frame_print_at(uint8_t x, uint8_t y, const char *);
+void frame_print_at(int x, int y, const char *);
 void frame_bar_display(uint8_t x, uint8_t y, uint8_t len, uint8_t percent);
 void frame_vline_at(uint8_t x, uint8_t y, uint8_t len);
 void frame_show();

@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "screen.h"
 #include "config.h"
@@ -33,6 +34,7 @@ extern const char *font[];
 extern const char *font_portrait[];
 
 unsigned char frame_buffer[128*64/8];
+// unsigned char frame_buffer[132*8];
 int frame_cursor = 0;
 
 void lcdCommand(unsigned char cmd) {
@@ -158,7 +160,7 @@ void screen_init() {
   
 }
 
-int lcd_shutdown() {
+int screen_shutdown() {
   gpio_clear(LCD_RST_PORT, LCD_RST_PIN);
   gpio_clear(LCD_BL_PORT, LCD_BL_PIN);
   spi_disable(LCD_SPI);
@@ -166,7 +168,7 @@ int lcd_shutdown() {
   return 0;
 }
 
-void lcdBacklight(unsigned short on) {
+void screen_backlight(unsigned short on) {
   if(on) {
     gpio_set(LCD_BL_PORT, LCD_BL_PIN);
   } else {
@@ -191,36 +193,36 @@ unsigned char lcd_get_contrast() {
   return con;
 }
 
-void lcdClear() {
-  int i, j;
-  
-  for(i=0;i<8;i++) {
-    lcdCommand(LCD_PAGE_SET(i));
-    lcdCommand(LCD_COLUMN_SET_HI(0));
-    lcdCommand(LCD_COLUMN_SET_LO(0));
-    for(j=0;j<128;j++) {
-      lcdData(0x00);
-    }
-  }
-  lcdCommand(LCD_PAGE_SET(0));
-  lcdCommand(LCD_COLUMN_SET_HI(0));
-  lcdCommand(LCD_COLUMN_SET_LO(0));
-}
-
-void lcdPrint(char *msg, char line) {
-  int i, j;
-  for(i=0;i<21;i++) {
-    if(msg[i] == 0) {
-      break;
-    }
-    lcdCommand(LCD_PAGE_SET(7-line));
-    lcdCommand(LCD_COLUMN_SET_HI(i*6));
-    lcdCommand(LCD_COLUMN_SET_LO(i*6));
-    for(j=0;j<6;j++) {
-      lcdData(font[msg[i]][j]);
-    }
-  }
-}
+// void lcdClear() {
+//   int i, j;
+//   
+//   for(i=0;i<8;i++) {
+//     lcdCommand(LCD_PAGE_SET(i));
+//     lcdCommand(LCD_COLUMN_SET_HI(0));
+//     lcdCommand(LCD_COLUMN_SET_LO(0));
+//     for(j=0;j<128;j++) {
+//       lcdData(0x00);
+//     }
+//   }
+//   lcdCommand(LCD_PAGE_SET(0));
+//   lcdCommand(LCD_COLUMN_SET_HI(0));
+//   lcdCommand(LCD_COLUMN_SET_LO(0));
+// }
+// 
+// void lcdPrint(char *msg, char line) {
+//   int i, j;
+//   for(i=0;i<21;i++) {
+//     if(msg[i] == 0) {
+//       break;
+//     }
+//     lcdCommand(LCD_PAGE_SET(7-line));
+//     lcdCommand(LCD_COLUMN_SET_HI(i*6));
+//     lcdCommand(LCD_COLUMN_SET_LO(i*6));
+//     for(j=0;j<6;j++) {
+//       lcdData(font[msg[i]][j]);
+//     }
+//   }
+// }
 
 // void lcdBlit(uint8_t *img, unsigned char rows, unsigned char cols, unsigned char x, unsigned char y) {
 //   lcdBlitPortrait(img, rows, cols, x, y);
@@ -247,31 +249,50 @@ void frameCharAt(uint8_t x, uint8_t y, char c) {
   }
 }
 
-void frame_char_at_portrait(uint8_t x, uint8_t y, char c) {
+void frame_char_at_portrait(int x, int y, char c) {
   uint8_t oldval;
   int i;
   int shift;
+  int xb;
   // x = width (64 pixels)
   // y = height (128 pixels)
+  if((x > 63) || (x < -5) || (y > 127) || (y < -7)) {         // don't write out of the frame buffer
+    return;
+  }
   shift = x % 8;
+  if(shift < 0)
+    shift += 8;
+  xb = x/8;
+  
+  if(x < 0)
+    xb--;
   for(i=0;i<8;i++) {
-    if(shift < 2) {
-      // all bits are in the same byte
-      oldval = frame_buffer[(7 - x/8) * 128 + y + i];
-      oldval &= ~(0x3f << shift);
-      oldval |= (font_portrait[(unsigned char)c][i] & 0x3f) << shift;
-      frame_buffer[(7 - x/8) * 128 + y + i] = oldval;
-    } else {
-      // character spans two pages
-      oldval = frame_buffer[(7 - x/8) * 128 + y + i];
-      oldval &= ~(0x3f << shift);
-      oldval |= (font_portrait[(unsigned char)c][i] & 0x3f) << shift;
-      frame_buffer[(7 - x/8) * 128 + y + i] = oldval;
-      
-      oldval = frame_buffer[(7 - x/8 - 1) * 128 + y + i];
-      oldval &= ~(0x3f >> (8 - shift));
-      oldval |= (font_portrait[(unsigned char)c][i] & 0x3f) >> (8 - shift);
-      frame_buffer[(7 - x/8 - 1) * 128 + y + i] = oldval;
+    if(y + i > 127) {
+      return;           // don't leave the frame
+    }
+    if(y + i >= 0) {
+      if(shift < 2) {
+        // all bits are in the same byte
+        oldval = frame_buffer[(7 - xb) * SCREEN_WIDTH + y + i + SCREEN_OFFSET];
+        oldval &= ~(0x3f << shift);
+        oldval |= (font_portrait[(unsigned char)c][i] & 0x3f) << shift;
+        frame_buffer[(7 - xb) * SCREEN_WIDTH + y + i + SCREEN_OFFSET] = oldval;
+      } else {
+        // character spans two pages
+        if(xb >= 0) {
+          oldval = frame_buffer[(7 - xb) * SCREEN_WIDTH + y + i + SCREEN_OFFSET];
+          oldval &= ~(0x3f << shift);
+          oldval |= (font_portrait[(unsigned char)c][i] & 0x3f) << shift;
+          frame_buffer[(7 - xb) * SCREEN_WIDTH + y + i + SCREEN_OFFSET] = oldval;
+        }
+        
+        if(xb < 7) {
+          oldval = frame_buffer[(7 - xb - 1) * SCREEN_WIDTH + y + i + SCREEN_OFFSET];
+          oldval &= ~(0x3f >> (8 - shift));
+          oldval |= (font_portrait[(unsigned char)c][i] & 0x3f) >> (8 - shift);
+          frame_buffer[(7 - xb - 1) * SCREEN_WIDTH + y + i + SCREEN_OFFSET] = oldval;
+        }
+      }
     }
   }
 }
@@ -279,7 +300,7 @@ void frame_char_at_portrait(uint8_t x, uint8_t y, char c) {
 void frame_clear() {
   int i;
   frame_cursor = 0;
-  for(i=0;i<1024;i++) {
+  for(i=0;i<SCREEN_WIDTH * (SCREEN_HEIGHT/8);i++) {
     frame_buffer[i] = 0;
   }
 }
@@ -288,7 +309,7 @@ void frame_clear() {
 // // 
 // }
 
-void frame_print_at(uint8_t x, uint8_t y, const char *msg) {
+void frame_print_at(int x, int y, const char *msg) {
   while(*msg) {
     frame_char_at_portrait(x,y,*msg++);
     x += 6;
@@ -344,6 +365,16 @@ void frame_vline_at(uint8_t x, uint8_t y, uint8_t len) {
   }
 }
 
+// void frame_show() {
+//   int i;
+//   lcdCommand(LCD_PAGE_SET(0));
+//   lcdCommand(LCD_COLUMN_SET_HI(0));
+//   lcdCommand(LCD_COLUMN_SET_LO(0));
+//   for(i=0;i<(8 * 132);i++) {
+//     lcdData(frame_buffer[i]);
+//   }
+// }
+
 void frame_show() {
   int i, j;
   for(i=0;i<8;i++) {
@@ -354,9 +385,6 @@ void frame_show() {
       lcdData(frame_buffer[(7-i)*SCREEN_WIDTH+j]);
     }
   }
-  lcdCommand(LCD_PAGE_SET(0));
-  lcdCommand(LCD_COLUMN_SET_HI(0));
-  lcdCommand(LCD_COLUMN_SET_LO(4));
 }
 
 void lcd_splash(const char *image[]) {
