@@ -168,5 +168,5 @@ static void interface_task(void *parameter __attribute__((unused))) {
 }
 
 void start_interface_task() {
-  xTaskCreate( interface_task, (const signed char * const)"INTERFACE", INTERFACE_TASK_STACK_SIZE, NULL, INTERFACE_TASK_PRIORITY, NULL);
+  iprintf("Start interface %ld\r\n", xTaskCreate( interface_task, (const signed char * const)"INTERFACE", INTERFACE_TASK_STACK_SIZE, NULL, INTERFACE_TASK_PRIORITY, NULL));
 }

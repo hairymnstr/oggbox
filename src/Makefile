@@ -34,6 +34,7 @@ LDFLAGS		+= -Wl,--start-group -lc -lgcc -Wl,--end-group \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
 OBJS		+= main.o vs1053.o block_sd.o fat.o syscalls.o partition.o nd_usart.o \
 		   power.o interface.o screen.o font.o font_portrait.o usb.o ogg_meta.o \
+		   playlist.o dirent.o handler.o \
 		   list.o queue.o tasks.o port.o heap_1.o
 
 # Be silent per default, but 'make V=1' will show all compiler calls.
@@ -51,6 +52,9 @@ endif
 all: images
 
 images: $(BINARY).images
+
+handler.o: handler.s
+	$(Q)arm-none-eabi-as -o handler.o -c handler.s
 
 list.o: FreeRTOS/Source/list.c
 	$(Q)$(CC) $(CFLAGS) -o list.o -c FreeRTOS/Source/list.c

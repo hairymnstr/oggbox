@@ -15,7 +15,7 @@
 
 struct dirent {
   int d_ino;
-  char d_name[12];
+  char d_name[13];
 };
 
 typedef struct {

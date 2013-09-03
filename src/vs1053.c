@@ -33,23 +33,20 @@
 #include "task.h"
 #include "queue.h"
 
+#include "playlist.h"
 #include "ogg_meta.h"
 #include "vs1053.h"
 #include "config.h"
 
 
 #define PLAYER_TASK_PRIORITY (tskIDLE_PRIORITY + 3)
-#define PLAYER_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2000)
+#define PLAYER_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2048)
 
 volatile struct player_status current_track;
 volatile int current_track_playing;
 FILE *media_fd;
 ssize_t media_byte_len;
 extern xQueueHandle player_queue;
-
-const char *jimmy_album_title = "Bubbleino EP";
-const char *jimmy_artist_name = "20lb Sounds";
-const char *jimmy_track_title = "Jimmy Carter";
 
 /**
  *  PRIVATE FUNCTION
@@ -184,8 +181,10 @@ static void player_task(void *parameters __attribute__((unused))) {
   struct meta metainfo;
   int jobs_serviced;
 //   char filename[] = "/20lbSo~1.ogg";
-  char filename[] = "/06-Fol~1.ogg";
-  
+//   char filename[] = "/06-Fol~1.ogg";
+//   char filename[] = "/outro.ogg";
+  char filename[14];
+  char *file;
   // do setup stuff
   init_codec();
   
@@ -205,7 +204,15 @@ static void player_task(void *parameters __attribute__((unused))) {
 
     current_track_playing = 1;
 
-    media_fd = fopen(filename, "rb");
+    file = playlist_get_next_track();
+    if(filename == NULL) {
+      media_fd = NULL;
+    } else {
+      filename[0] = '/';
+      strncpy(&filename[1], file, 13);
+      iprintf("Next track = %s\r\n", filename);
+      media_fd = fopen(filename, "rb");
+    }
     if(media_fd == 0) {
       iprintf("Failed to open media file: %s\r\n", strerror(errno));
       while(1) {

@@ -59,7 +59,6 @@ static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
             verification. */
         vTaskDelay(1000);
         gpio_toggle(RED_LED_PORT, RED_LED_PIN);
-        iprintf("Battery voltage = %d.%03d\r\n", power_latest_battery() / 1000, power_latest_battery() % 1000);
     }
 }
 

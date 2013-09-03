@@ -12,11 +12,73 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+int write_std_out(const void *, int);
+
+void print_reg(uint32_t r) {
+  int i;
+  for(i=0;i<8;i++) {
+    if(r > 0x9fffffff) {
+      usart_send_blocking(STD_OUT_UART, ((r >> 28) & 0xf) + 'A');
+    } else {
+      usart_send_blocking(STD_OUT_UART, ((r >> 28) & 0xf) + '0');
+    }
+    r <<= 4;
+  }
+}
+
+
 const char *seek_str[] = {
   "SEEK_SET",
   "SEEK_CUR",
   "SEEK_END",
 };
+
+void hard_fault_handler_c( uint32_t *pulFaultStackAddress )
+{
+/* These are volatile to try and prevent the compiler/linker optimising them
+away as the variables never actually get used.  If the debugger won't show the
+values of the variables, make them global my moving their declaration outside
+of this function. */
+volatile uint32_t r0;
+volatile uint32_t r1;
+volatile uint32_t r2;
+volatile uint32_t r3;
+volatile uint32_t r12;
+volatile uint32_t lr; /* Link register. */
+volatile uint32_t pc; /* Program counter. */
+volatile uint32_t psr;/* Program status register. */
+
+    r0 = pulFaultStackAddress[ 0 ];
+    r1 = pulFaultStackAddress[ 1 ];
+    r2 = pulFaultStackAddress[ 2 ];
+    r3 = pulFaultStackAddress[ 3 ];
+
+    r12 = pulFaultStackAddress[ 4 ];
+    lr = pulFaultStackAddress[ 5 ];
+    pc = pulFaultStackAddress[ 6 ];
+    psr = pulFaultStackAddress[ 7 ];
+
+    write_std_out("hard fault ", 11);
+    print_reg(pc);
+    write_std_out("\r\n", 2);
+    /* When the following line is hit, the variables contain the register values. */
+    while(1) {
+      __asm__("nop");
+    }
+}
+
+void vApplicationStackOverflowHook( xTaskHandle xTask,
+                                    signed portCHAR *pcTaskName ) {
+  write_std_out("Stack overflow detected\r\n", 25);
+  write_std_out((const char *)pcTaskName, strlen((const char *)pcTaskName));
+  
+  while(1) {
+    __asm__("nop");
+  }
+}
 
 /**
  *  write_std_out - writes len bytes from char *buffer to the "standard out"
@@ -69,7 +131,7 @@ int _stat(char *file, struct stat *st) {
 
 int _fstat (int fd, struct stat * st) {
   int rerr;
-  write_std_out("_fstat", 6);
+//   write_std_out("_fstat", 6);
   usart_dec_u32(fd);
   write_std_out("\r\n", 2);
   if (fd == STDOUT_FILENO) {
@@ -136,7 +198,7 @@ int _open_r(struct _reent *ptr, const char *name, int flags, int mode) {
   
   i = fat_open(name, flags, mode, &rerrno);
 
-  iprintf("rerrno: %d\r\n", rerrno);
+//   iprintf("rerrno: %d\r\n", rerrno);
   if(i<0) {
     ptr->_errno = rerrno;
     i = -1;

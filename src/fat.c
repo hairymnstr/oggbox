@@ -1345,7 +1345,8 @@ int fat_lseek(int fd, int ptr, int dir, int *rerrno) {
 
 int fat_get_next_dirent(int fd, struct dirent *out_de) {
   direntS *de;
-
+//   int i,j;
+//   iprintf("%d\r\n", file_num[fd].cursor);
   de = (direntS *)(file_num[fd].buffer + file_num[fd].cursor);
 
   /* first check the current entry isn't the end of the folder */
@@ -1355,6 +1356,7 @@ int fat_get_next_dirent(int fd, struct dirent *out_de) {
   /* now keep looping past LFN entries until a valid one or the end of dir is found */
   while(1) {
     /* otherwise look for the next entry */
+//     iprintf("looping %d\r\n", file_num[fd].cursor);
     if(file_num[fd].cursor + 32 == 512) {
       if(fat_next_sector(fd) == -1) {
         return -1;  /* there are no more sectors allocated to this directory */
@@ -1368,7 +1370,21 @@ int fat_get_next_dirent(int fd, struct dirent *out_de) {
     }
     if(!((de->attributes == 0x0F) || (de->attributes & FAT_ATT_VOL))) {
       /* if it's not an LFN and not a volume label it's a real file. */
+//       iprintf("fatname to str\r\n");
+//       for(i=0;i<4;i++) {
+//         for(j=0;j<8;j++) {
+//           iprintf("%02X ", file_num[fd].buffer[file_num[fd].cursor + i * 8 + j]);
+//         }
+//         iprintf("\r\n");
+//       }
+//       iprintf("%d\r\n", de->filename[0]);
+//       for(i=0;i<12;i++) {
+//         iprintf("%02X ", de->filename[i]);
+//       }
       fatname_to_str(out_de->d_name, de->filename);
+//       iprintf("\r\n");
+//       iprintf("%s\r\n", de->filename);
+//       iprintf("%s\r\n", out_de->d_name);
       if(fatfs.type == PART_TYPE_FAT16) {
         out_de->d_ino = de->first_cluster;
       } else {
