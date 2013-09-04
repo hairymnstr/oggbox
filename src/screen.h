@@ -45,6 +45,12 @@
 #define LCD_CURSOR_ON           0x03
 #define LCD_CURSOR_END          0xAC
 
+// fill constants for line and shape drawing
+#define FILL_TYPE_NONE          0
+#define FILL_TYPE_WHITE         1
+#define FILL_TYPE_BLACK         2
+#define FILL_TYPE_INVERT        3
+
 void lcdCommand(unsigned char);
 void lcdData(unsigned char);
 void screen_init();

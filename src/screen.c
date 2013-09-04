@@ -401,3 +401,60 @@ void lcd_splash(const char *image[]) {
   lcdCommand(LCD_COLUMN_SET_HI(0));
   lcdCommand(LCD_COLUMN_SET_LO(4));
 }
+
+void frame_draw_h_line(int x, int y, int l, int line_type) {
+  int i;
+  
+  if(l < 0) {
+    x = x + l;
+    l = l * -1;
+  }
+  if((x > 63) || (x + l < 0)) {
+    return;
+  }
+  if((y > 127) || (y < 0)) {
+    return;
+  }
+  if(!((line_type==FILL_TYPE_BLACK) || 
+       (line_type==FILL_TYPE_WHITE) ||
+       (line_type==FILL_TYPE_INVERT))) {
+    return;
+  }
+  if(x < 0) {
+    l += x;
+    x = 0;
+  }
+  if(x + l > 63) {
+    l = 63 - x;
+  }
+  // right.  Now we're happy to actually draw a line
+  for(i=x/8;i<(x+l)/8;i++) {
+    if(line_type == FILL_TYPE_BLACK) {
+      frame_buffer[y * 128 + x] |= 0xff;
+    } else if(line_type == FILL_TYPE_WHITE) {
+      frame_buffer[y * 128 + x] &= (0xff ^ 0xff);
+    } else {
+      frame_buffer[y * 128 + x] ^= 0xff;
+    }
+  }
+}
+
+void frame_draw_v_line(int x, int y, int l, int line_type) {
+  
+}
+
+void frame_draw_rect(int x, int y, int width, int height, int fill, int line_type) {
+  int i;
+  if(line_type != FILL_TYPE_NONE) {
+    frame_draw_h_line(x, y, width, line_type);
+    frame_draw_h_line(x, y+height, width, line_type);
+    frame_draw_v_line(x, y, height, line_type);
+    frame_draw_v_line(x+width, y, height, line_type);
+  }
+  
+  if(fill != FILL_TYPE_NONE) {
+    for(i=y+1;i<y+(height-2);y++) {
+      frame_draw_h_line(x+1, y, width-2, fill);
+    }
+  }
+}

@@ -117,10 +117,21 @@ void interface_now_playing() {
   }
 }
 
+void interface_main_menu() {
+  frame_print_at(5, 16, "Now");
+  frame_print_at(10, 24, "Playing");
+  frame_print_at(5, 36, "Playlist");
+  frame_print_at(5, 52, "Media");
+  frame_print_at(5, 68, "Settings");
+  
+//   frame_draw_rect(0,16,64,16,FILL_TYPE_INVERT, FILL_TYPE_INVERT);
+}
+
 static void interface_task(void *parameter __attribute__((unused))) {
   int volume = 16;
   char msg[30];
   struct player_job player_job_to_do;
+  int mode = 0;
   
   screen_init();
   
@@ -142,6 +153,9 @@ static void interface_task(void *parameter __attribute__((unused))) {
       player_job_to_do.data = volume | (volume << 8);
       xQueueSendToBack(player_queue, &player_job_to_do, 0);
     }
+    if(gpio_get(MENU_BTN_PORT, MENU_BTN_PIN)) {
+      mode ^= 1;
+    }
     
     // update the screen
     
@@ -159,7 +173,11 @@ static void interface_task(void *parameter __attribute__((unused))) {
     sniprintf(msg, 10, "%d.%03dV", power_latest_battery() / 1000, power_latest_battery() % 1000);
     frame_print_at(14,120,msg);
     
-    interface_now_playing();
+    if(mode) {
+      interface_now_playing();
+    } else {
+      interface_main_menu();
+    }
     frame_show();
     
     vTaskDelay(100);

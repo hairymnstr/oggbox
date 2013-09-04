@@ -101,6 +101,9 @@
 #define VOL_DOWN_PORT   GPIOC
 #define VOL_DOWN_PIN    GPIO7
 
+#define MENU_BTN_PORT   GPIOC
+#define MENU_BTN_PIN    GPIO2
+
 // USB stuff
 #define USB_DISC_PORT   GPIOA
 #define USB_DISC_PIN    GPIO2
