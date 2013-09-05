@@ -124,7 +124,7 @@ void interface_main_menu() {
   frame_print_at(5, 52, "Media");
   frame_print_at(5, 68, "Settings");
   
-//   frame_draw_rect(0,16,64,16,FILL_TYPE_INVERT, FILL_TYPE_INVERT);
+  frame_draw_rect(0,16,64,16,FILL_TYPE_INVERT, FILL_TYPE_INVERT);
 }
 
 static void interface_task(void *parameter __attribute__((unused))) {

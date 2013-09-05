@@ -404,11 +404,15 @@ void lcd_splash(const char *image[]) {
 
 void frame_draw_h_line(int x, int y, int l, int line_type) {
   int i;
-  
+  int d;
+  if(l == 0) {
+    return;
+  }
   if(l < 0) {
     x = x + l;
     l = l * -1;
   }
+  l--;          // for a 10 pixel line we count from 0 to 9 pixels
   if((x > 63) || (x + l < 0)) {
     return;
   }
@@ -428,33 +432,77 @@ void frame_draw_h_line(int x, int y, int l, int line_type) {
     l = 63 - x;
   }
   // right.  Now we're happy to actually draw a line
-  for(i=x/8;i<(x+l)/8;i++) {
+  for(i=x/8;i<(x+l)/8+1;i++) {
+    d = 0xff;
+    if((i*8) < x) {
+      d = (0xff << (x % 8)) & d;
+    }
+    if(((i+1)*8) >= (x+l)) {
+      d = (0xff >> (7 - ((x+l) % 8))) & d;
+    }
     if(line_type == FILL_TYPE_BLACK) {
-      frame_buffer[y * 128 + x] |= 0xff;
+      frame_buffer[y + ((7 - i) * 128)] |= d;
     } else if(line_type == FILL_TYPE_WHITE) {
-      frame_buffer[y * 128 + x] &= (0xff ^ 0xff);
+      frame_buffer[y + ((7 - i) * 128)] &= (d ^ 0xff);
     } else {
-      frame_buffer[y * 128 + x] ^= 0xff;
+      frame_buffer[y + ((7 - i) * 128)] ^= d;
     }
   }
 }
 
 void frame_draw_v_line(int x, int y, int l, int line_type) {
-  
+  int i;
+  int d;
+  if(l == 0) {
+    return;
+  }
+  if(l < 0) {
+    y = y + l;
+    l *= -1;
+  }
+  l--;
+  if((x > 63) || (x < 0)) {
+    return;
+  }
+  if((y > 127) || ((y + l) < 0)) {
+    return;
+  }
+  if(!((line_type==FILL_TYPE_BLACK) ||
+       (line_type==FILL_TYPE_WHITE) ||
+       (line_type==FILL_TYPE_INVERT))) {
+    return;
+  }
+  if(y < 0) {
+    l += y;
+    y = 0;
+  }
+  if((y + l) > 127) {
+    l = (127 - y);
+  }
+  d = 1 << (x % 8);
+  for(i=y;i<y+l;i++) {
+    if(line_type == FILL_TYPE_BLACK) {
+      frame_buffer[i + ((7 - (x % 8)) * 128)] |= d;
+    } else if(line_type == FILL_TYPE_WHITE) {
+      frame_buffer[i + ((7 - (x % 8)) * 128)] &= (d ^ 0xff);
+    } else {
+      frame_buffer[i + ((7 - (x % 8)) * 128)] ^= d;
+    }
+  }
 }
 
 void frame_draw_rect(int x, int y, int width, int height, int fill, int line_type) {
   int i;
   if(line_type != FILL_TYPE_NONE) {
     frame_draw_h_line(x, y, width, line_type);
-    frame_draw_h_line(x, y+height, width, line_type);
-    frame_draw_v_line(x, y, height, line_type);
-    frame_draw_v_line(x+width, y, height, line_type);
+    frame_draw_h_line(x, y+height-1, width, line_type);
+    frame_draw_v_line(x, y+1, height-1, line_type);
+    frame_draw_v_line(x+width-1, y+1, height-1, line_type);
   }
   
   if(fill != FILL_TYPE_NONE) {
-    for(i=y+1;i<y+(height-2);y++) {
-      frame_draw_h_line(x+1, y, width-2, fill);
+    for(i=y+1;i<y+(height-1);i++) {
+      frame_draw_h_line(x+1, i, width-2, fill);
     }
   }
 }
