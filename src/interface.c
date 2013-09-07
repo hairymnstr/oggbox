@@ -18,9 +18,28 @@
 #define INTERFACE_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
 
 extern xQueueHandle player_queue;
+int _display_mode;
 
+void set_display_mode(int mode) {
+  static int last_mode = DISPLAY_MODE_NOW_PLAYING;
+  int temp;
+  
+  if(mode == DISPLAY_MODE_PREVIOUS) {
+    temp = last_mode;
+    last_mode = _display_mode;
+    _display_mode = temp;
+  } else {
+    last_mode = _display_mode;
+    _display_mode = mode;
+  }
+}
+
+int get_display_mode() {
+  return _display_mode;
+}
+  
 // Now playing screen, shows title, artist and progress
-void interface_now_playing() {
+void interface_now_playing(int buttons) {
   char *msg;
   static int artist_dir = -1;
   static int artist_index = 0;
@@ -115,23 +134,39 @@ void interface_now_playing() {
     sniprintf(buf, sizeof(buf), "%3lu%%", (100 * player_get_position()) / player_get_length());
     frame_print_at(12,56,buf);
   }
+  
+  if(buttons & MENU_BTN_FLAG) {
+    set_display_mode(DISPLAY_MODE_MENU);
+  }
 }
 
-void interface_main_menu() {
+void interface_main_menu(int buttons) {
+  static int option = 0;
+  int option_count = 4;
+  
   frame_print_at(5, 16, "Now");
   frame_print_at(10, 24, "Playing");
   frame_print_at(5, 36, "Playlist");
   frame_print_at(5, 52, "Media");
   frame_print_at(5, 68, "Settings");
   
-  frame_draw_rect(0,16,64,16,FILL_TYPE_INVERT, FILL_TYPE_INVERT);
+  frame_draw_rect(0,(option + 1) * 16,64,16,FILL_TYPE_INVERT, FILL_TYPE_INVERT);
+  
+  if(buttons & DOWN_BTN_FLAG) {
+    option = (option + 1) % option_count;
+  } else if(buttons & UP_BTN_FLAG) {
+    option = (option - 1) % option_count;
+  } else if(buttons & MENU_BTN_FLAG) {
+    option = 0;
+    set_display_mode(DISPLAY_MODE_PREVIOUS);
+  }
 }
 
 static void interface_task(void *parameter __attribute__((unused))) {
   int volume = 16;
   char msg[30];
   struct player_job player_job_to_do;
-  int mode = 0;
+  int mode = DISPLAY_MODE_NOW_PLAYING;
   
   screen_init();
   
@@ -139,6 +174,8 @@ static void interface_task(void *parameter __attribute__((unused))) {
   
   while(1) {
     // check the buttons
+    // volume controls are asynchronous, they always do the same thing regardless of display
+    // context
     if(gpio_get(VOL_UP_PORT, VOL_UP_PIN)) {
       if(volume > 0)
         volume--;
@@ -153,8 +190,26 @@ static void interface_task(void *parameter __attribute__((unused))) {
       player_job_to_do.data = volume | (volume << 8);
       xQueueSendToBack(player_queue, &player_job_to_do, 0);
     }
+    
+    // other buttons are just checked all at once here then passed through to the current
+    // display function
     if(gpio_get(MENU_BTN_PORT, MENU_BTN_PIN)) {
-      mode ^= 1;
+      buttons |= MENU_BTN_FLAG;
+    }
+    if(gpio_get(SET_BTN_PORT, SET_BTN_PIN)) {
+      buttons |= SET_BTN_FLAG;
+    }
+    if(gpio_get(UP_BTN_PORT, UP_BTN_PIN) {
+      buttons |= UP_BTN_FLAG;
+    }
+    if(gpio_get(DOWN_BTN_PORT, DOWN_BTN_PIN) {
+      buttons |= DOWN_BTN_FLAG;
+    }
+    if(gpio_get(LEFT_BTN_PORT, LEFT_BTN_PIN) {
+      buttons |= LEFT_BTN_FLAG;
+    }
+    if(gpio_get(RIGHT_BTN_PORT, RIGHT_BTN_PIN) {
+      buttons |= RIGHT_BTN_FLAG;
     }
     
     // update the screen
@@ -173,10 +228,11 @@ static void interface_task(void *parameter __attribute__((unused))) {
     sniprintf(msg, 10, "%d.%03dV", power_latest_battery() / 1000, power_latest_battery() % 1000);
     frame_print_at(14,120,msg);
     
-    if(mode) {
-      interface_now_playing();
-    } else {
-      interface_main_menu();
+    mode = get_display_mode();
+    if(mode == DISPLAY_MODE_NOW_PLAYING) {
+      interface_now_playing(buttons);
+    } else if(mode == DISPLAY_MODE_MENU) {
+      interface_main_menu(buttons);
     }
     frame_show();
     
