@@ -67,4 +67,6 @@ void frame_vline_at(uint8_t x, uint8_t y, uint8_t len);
 void frame_show();
 void lcd_splash(const char *image[]);
 
+void frame_draw_rect(int x, int y, int width, int height, int fill, int line_style);
+
 #endif /* ifndef LCD_H */

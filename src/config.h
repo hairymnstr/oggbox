@@ -104,6 +104,21 @@
 #define MENU_BTN_PORT   GPIOC
 #define MENU_BTN_PIN    GPIO2
 
+#define SET_BTN_PORT    GPIOC
+#define SET_BTN_PIN     GPIO1
+
+#define UP_BTN_PORT     GPIOA
+#define UP_BTN_PIN      GPIO0
+
+#define LEFT_BTN_PORT   GPIOC
+#define LEFT_BTN_PIN    GPIO3
+
+#define RIGHT_BTN_PORT  GPIOC
+#define RIGHT_BTN_PIN   GPIO4
+
+#define DOWN_BTN_PORT   GPIOC
+#define DOWN_BTN_PIN    GPIO5
+
 // USB stuff
 #define USB_DISC_PORT   GPIOA
 #define USB_DISC_PIN    GPIO2

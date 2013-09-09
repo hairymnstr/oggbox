@@ -159,19 +159,54 @@ void interface_main_menu(int buttons) {
   } else if(buttons & MENU_BTN_FLAG) {
     option = 0;
     set_display_mode(DISPLAY_MODE_PREVIOUS);
+  } else if(buttons & RIGHT_BTN_FLAG) {
+    // dispatch to next layer down
+    if(option == 0) {
+      set_display_mode(DISPLAY_MODE_NOW_PLAYING);
+    } else if(option == 1) {
+      set_display_mode(DISPLAY_MODE_PLAYLIST);
+    } else if(option == 2) {
+      set_display_mode(DISPLAY_MODE_MEDIA);
+    } else if(option == 3) {
+      set_display_mode(DISPLAY_MODE_SETTINGS);
+    }
+  }
+}
+
+void interface_playlist(int buttons) {
+  if(buttons & MENU_BTN_FLAG) {
+    set_display_mode(DISPLAY_MODE_MENU);
+  }
+}
+
+void interface_media(int buttons) {
+  if(buttons & MENU_BTN_FLAG) {
+    set_display_mode(DISPLAY_MODE_MENU);
+  }
+}
+
+void interface_settings(int buttons) {
+  
+  if(buttons & MENU_BTN_FLAG) {
+    set_display_mode(DISPLAY_MODE_MENU);
   }
 }
 
 static void interface_task(void *parameter __attribute__((unused))) {
   int volume = 16;
   char msg[30];
+  int buttons;
   struct player_job player_job_to_do;
-  int mode = DISPLAY_MODE_NOW_PLAYING;
+  int mode;
   
   screen_init();
   
   screen_backlight(65535);
   
+  // set display mode twice so that the previous mode
+  // is set as well
+  set_display_mode(DISPLAY_MODE_NOW_PLAYING);
+  set_display_mode(DISPLAY_MODE_NOW_PLAYING);
   while(1) {
     // check the buttons
     // volume controls are asynchronous, they always do the same thing regardless of display
@@ -193,22 +228,23 @@ static void interface_task(void *parameter __attribute__((unused))) {
     
     // other buttons are just checked all at once here then passed through to the current
     // display function
+    buttons = 0;
     if(gpio_get(MENU_BTN_PORT, MENU_BTN_PIN)) {
       buttons |= MENU_BTN_FLAG;
     }
     if(gpio_get(SET_BTN_PORT, SET_BTN_PIN)) {
       buttons |= SET_BTN_FLAG;
     }
-    if(gpio_get(UP_BTN_PORT, UP_BTN_PIN) {
+    if(gpio_get(UP_BTN_PORT, UP_BTN_PIN)) {
       buttons |= UP_BTN_FLAG;
     }
-    if(gpio_get(DOWN_BTN_PORT, DOWN_BTN_PIN) {
+    if(gpio_get(DOWN_BTN_PORT, DOWN_BTN_PIN)) {
       buttons |= DOWN_BTN_FLAG;
     }
-    if(gpio_get(LEFT_BTN_PORT, LEFT_BTN_PIN) {
+    if(gpio_get(LEFT_BTN_PORT, LEFT_BTN_PIN)) {
       buttons |= LEFT_BTN_FLAG;
     }
-    if(gpio_get(RIGHT_BTN_PORT, RIGHT_BTN_PIN) {
+    if(gpio_get(RIGHT_BTN_PORT, RIGHT_BTN_PIN)) {
       buttons |= RIGHT_BTN_FLAG;
     }
     
@@ -233,6 +269,12 @@ static void interface_task(void *parameter __attribute__((unused))) {
       interface_now_playing(buttons);
     } else if(mode == DISPLAY_MODE_MENU) {
       interface_main_menu(buttons);
+    } else if(mode == DISPLAY_MODE_MEDIA) {
+      interface_media(buttons);
+    } else if(mode == DISPLAY_MODE_PLAYLIST) {
+      interface_playlist(buttons);
+    } else if(mode == DISPLAY_MODE_SETTINGS) {
+      interface_settings(buttons);
     }
     frame_show();
     
