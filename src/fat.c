@@ -421,10 +421,18 @@ int fat_select_cluster(int fd, uint32_t cluster) {
 #ifdef TRACE
   printf("fat_select_cluster\n");
 #endif
-  file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
-  file_num[fd].sectors_left = fatfs.sectors_per_cluster - 1;
-  file_num[fd].cluster = cluster;
-  file_num[fd].cursor = 0;
+  if(cluster == 1) {
+    // this is an edge case for the fixed root directory on FAT16
+    file_num[fd].sector = fatfs.root_start;
+    file_num[fd].sectors_left = fatfs.root_len;
+    file_num[fd].cluster = 1;
+    file_num[fd].cursor = 0;
+  } else {
+    file_num[fd].sector = cluster * fatfs.sectors_per_cluster + fatfs.cluster0;
+    file_num[fd].sectors_left = fatfs.sectors_per_cluster - 1;
+    file_num[fd].cluster = cluster;
+    file_num[fd].cursor = 0;
+  }
 
   return block_read(file_num[fd].sector, file_num[fd].buffer);
 }
@@ -440,6 +448,14 @@ int fat_next_cluster(int fd, int *rerrno) {
   (*rerrno) = 0;
   if(fat_flush(fd)) {
     (*rerrno) = EIO;
+    return -1;
+  }
+  if(file_num[fd].cluster == 1) {
+    /* this is an edge case, FAT16 cluster 1 is the fixed length root directory
+     * so we return end of chain when selecting next cluster because there are
+     * no more clusters */
+    file_num[fd].error = FAT_END_OF_FILE;
+    (*rerrno) = 0;
     return -1;
   }
   i = file_num[fd].cluster;
@@ -835,7 +851,7 @@ int fat_mount_fat16(blockno_t start, blockno_t volume_size) {
   }
   
   fatfs.sectors_per_cluster = boot16->cluster_size;
-  fatfs.root_len = boot16->root_entries;
+  fatfs.root_len = (boot16->root_entries * 32) / 512;
   i = start;
   i += boot16->reserved_sectors;
   fatfs.active_fat_start = i;
