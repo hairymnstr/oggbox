@@ -118,7 +118,6 @@ int read_standard_tags(FILE *fr, struct meta *out) {
       utf8_strncpy(out->artist, &buf[mark+1], META_STR_LEN);
     } else if((strncmp(buf, "TITLE", 5) == 0) && (mark == 5)) {
       utf8_strncpy(out->title, &buf[mark+1], META_STR_LEN);
-      printf("%s\n", &buf[mark+1]);
     } else if((strncmp(buf, "ALBUM", 5) == 0) && (mark == 5)) {
       utf8_strncpy(out->album, &buf[mark+1], META_STR_LEN);
     } else if((strncmp(buf, "TRACKNUMBER", 11) == 0) && (mark == 11)) {

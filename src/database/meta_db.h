@@ -28,22 +28,6 @@ struct track {
   char title[META_STR_LEN];
 };
 
-typedef struct Snode {
-  void* pointers[METADB_NODE_SIZE+1];
-  int pointers_len;
-  uint64_t keys[METADB_NODE_SIZE];
-  int keys_len;
-  struct Snode *parent;
-  int isleaf;
-  int leftmost;
-  uint64_t minval;
-} Node;
-
-struct db_context {
-  Node *head;
-  int size;
-};
-
 uint64_t meta_db_string_hash(char *);
 
 void meta_db_init(struct db_context *);

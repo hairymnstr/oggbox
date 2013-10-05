@@ -138,7 +138,7 @@ module side_switch_hole() {
 
 module hold_switch_hole() {
 	union() {
-		translate([2.5,0,0]) cube([4,5,10],center=true);
+		translate([2.5,0,0]) cube([4,5,12],center=true);
 		cube([3,3,4.5],center=true);
 		translate([0,0,-2.25]) rotate([0,90,0]) cylinder(r1=1.5,r2=1.5,h=3,$fn=32,center=true);
 		translate([0,0,2.25]) rotate([0,90,0]) cylinder(r1=1.5,r2=1.5,h=3,$fn=32,center=true);
@@ -161,10 +161,12 @@ module upper_case() {
 			}
 			translate([0,-3,0]) cube([62,6,106],center=true);
 		}
-		translate([-17,0,51.5]) cube([6.5,6.5,2],center=true);
-		translate([17,0,51.5]) cube([6.5,6.5,2],center=true);
+		translate([0,0,51.5]) cube([50,6.5,2],center=true);
 		
 		}
+
+		// status LED hole
+		translate([0,5,-35]) rotate([90,0,0]) cylinder(r1=1.5,r2=1.5,h=5,$fn=32,center=true);
 
 		// button holes
 		translate([15,0,44]) button_hole();
@@ -177,12 +179,10 @@ module upper_case() {
 		// volume switch holes
 		translate([-29,1.6,31.25]) side_switch_hole();
 		translate([-29,1.6,23]) side_switch_hole();
-		translate([-29,0,31.25]) cube([3,3,10],center=true);
-		translate([-29,0,23]) cube([3,3,10],center=true);
 
 		// hold switch hole
 		translate([-29,1.6,-9]) hold_switch_hole();
-		translate([-29,0,-9]) cube([3,3,10],center=true);
+		translate([-29,0,11.125]) cube([7.1,3,50.25],center=true);
 		
 		translate([-17,-0.8,52.5]) rotate([0,0,180]) jack_hole();
 		translate([17,-0.8,52.5]) rotate([0,0,180]) jack_hole();
@@ -207,6 +207,16 @@ module upper_case() {
 
 		// usb socket
 		translate([0,0,-51]) usb_socket_hole();
+
+		// screw holes
+		translate([26,0,-48]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([27,0,48.5]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([-27,0,48.5]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([-24,0,-47.5]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([26,6,-48]) rotate([90,0,0]) cylinder(r1=1.5,r2=1.5,h=3,$fn=32);
+		translate([27,6,48.5]) rotate([90,0,0]) cylinder(r1=1.5,r2=1.5,h=3,$fn=32);
+		translate([-27,6,48.5]) rotate([90,0,0]) cylinder(r1=1.5,r2=1.5,h=3,$fn=32);
+		translate([-24,6,-47.5]) rotate([90,0,0]) cylinder(r1=1.5,r2=1.5,h=3,$fn=32);
 	}
 	// PCB support bars
 	translate([-1,0.8,41]) cube([2,3,10]);
@@ -239,6 +249,7 @@ union() {
 		translate([-29.25,0.8,31.25]) cube([1.5,1.6,10],center=true);
 		translate([-29.25,0.8,23]) cube([1.5,1.6,10],center=true);
 		translate([-29.25,0.8,-9]) cube([1.5,1.6,10],center=true);
+		translate([-27.75,0,11.125]) cube([4.5,3,50],center=true);
 		difference() {
 			translate([-27,-9,-49.5]) {
 				minkowski() {
@@ -275,8 +286,9 @@ union() {
 		// jack holes
 		translate([-17,-0.8,52.5]) rotate([0,0,180]) jack_hole();
 		translate([17,-0.8,52.5]) rotate([0,0,180]) jack_hole();
-		translate([-17,0,52.5]) cube([6.5,6.5,6],center=true);
-		translate([17,0,52.5]) cube([6.5,6.5,6],center=true);
+//		translate([-17,0,52.5]) cube([6.5,6.5,6],center=true);
+//		translate([17,0,52.5]) cube([6.5,6.5,6],center=true);
+		translate([0,0,51.5]) cube([51,6.5,2.1],center=true);
 		// cortex debug connector
 		translate([-22.5,-6.8,19.25]) cube([7,6,16]);
 
@@ -293,7 +305,20 @@ union() {
 		translate([-17,-10.3,-62+50-14.5]) cube([38,7.5,62]);
 		translate([16,-0.8,-42.75]) rotate([180,0,0]) translate([-6,0,-18]) cube([12,7,20]);
 		// and a bit of room for the wire
-		translate([-13,-6.5,-43]) cube([25,3,20]);
+		translate([-17,-8.5,-43]) cube([30,5,20]);
+
+		// reset switch hole
+		translate([-14.75,-1.6,-55]) rotate() cylinder(r1=0.75,r2=0.75,h=12,$fn=16,center=true);
+
+		// screw holes
+		translate([26,0,-48]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([27,0,48.5]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([-27,0,48.5]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([-24,0,-47.5]) rotate([90,0,0]) cylinder(r1=1, r2=1, h=30, $fn=16, center=true);
+		translate([26,-9,-48]) rotate([90,0,0]) cylinder(r1=2,r2=2,h=3,$fn=6);
+		translate([27,-9,48.5]) rotate([90,0,0]) cylinder(r1=2,r2=2,h=3,$fn=6);
+		translate([-27,-9,48.5]) rotate([90,0,0]) cylinder(r1=2,r2=2,h=3,$fn=6);
+		translate([-24,-9,-47.5]) rotate([90,0,0]) cylinder(r1=2,r2=2,h=3,$fn=6);
 	}
 	translate([-25.5,-4.8,-13]) cube([8,4,2]);
 	translate([21.5,-4.8,16]) cube([5,4,2]);
@@ -307,13 +332,51 @@ union() {
 	}
 }
 
+module button_mushroom() {
+	translate([0,3,0]) rotate([90,0,0]) cylinder(r1=2.5,r2=2.5,h=2,$fn=32);
+	translate([0,1,0]) rotate([90,0,0]) cylinder(r1=4,r2=4,h=1,$fn=32);
+}
+
+module volume_buttons() {
+	translate([-4.125,0,2.5]) {
+		translate([1.5,0,0]) cylinder(r1=1.4,r2=1.4,h=3,$fn=32,center=true);
+		cube([3,2.8,3], center=true);
+		translate([-1.5,0,0]) cylinder(r1=1.4,r2=1.4,h=3,$fn=32,center=true);
+	}
+	translate([4.125,0,2.5]) {
+		translate([1.5,0,0]) cylinder(r1=1.4,r2=1.4,h=3,$fn=32,center=true);
+		cube([3,2.8,3], center=true);
+		translate([-1.5,0,0]) cylinder(r1=1.4,r2=1.4,h=3,$fn=32,center=true);
+	}
+	translate([0,0,1]) cube([18,3,2.2], center=true);
+}
+
+module hold_switch_cover() {
+	difference() {
+		union() {
+			translate([1.5,0,3.9]) cylinder(r1=1.4,r2=1.4,h=3,$fn=32,center=true);
+			translate([-1.5,0,3.9]) cylinder(r1=1.4,r2=1.4,h=3,$fn=32,center=true);
+			translate([0,0,3.9]) cube([3,2.8,3],center=true);
+			translate([0,0,1.7]) cube([10,3,3.4], center=true);
+		}
+		translate([0,0,0.9]) cube([1.5,4,2.2], center=true);
+	}
+}
 
 module assembly() {
-	translate([-16.5,-2.205,-26.75]) rotate([0,270,0]) sdcard();
+	//translate([-16.5,-2.205,-26.75]) rotate([0,270,0]) sdcard();
 
 	pcba();
 	upper_case();
 	lower_case();
+		translate([15,3.8,44]) button_mushroom();
+		translate([-15,3.8,44]) button_mushroom();
+		translate([0,3.8,-25]) button_mushroom();
+		translate([0,3.8,-45]) button_mushroom();
+		translate([10,3.8,-35]) button_mushroom();
+		translate([-10,3.8,-35]) button_mushroom();
+	translate([-26.5,1.6,27.125]) rotate([0,270,0]) volume_buttons();
+	translate([-25.1,1.6,-9.75]) rotate([0,270,0]) hold_switch_cover();
 }
 
 module printable() {
@@ -322,5 +385,30 @@ module printable() {
 	translate([35,0,12]) rotate([90,0,0]) lower_case();
 }
 
-printable();
+module printable_front() {
+	translate([-35,0,6]) rotate([270,0,0]) upper_case();
+}
+
+module printable_back() {
+	translate([35,0,12]) rotate([90,0,0]) lower_case();
+}
+
+module printable_buttons() {
+	translate([15,15,0]) rotate([90,0,0]) button_mushroom();
+	translate([15,0,0]) rotate([90,0,0]) button_mushroom();
+	translate([15,-15,0]) rotate([90,0,0]) button_mushroom();
+	translate([0,15,0]) rotate([90,0,0]) button_mushroom();
+	translate([0,0,0]) rotate([90,0,0]) button_mushroom();
+	translate([0,-15,0]) rotate([90,0,0]) button_mushroom();
+	translate([-15,7.5,0]) rotate([0,0,90]) volume_buttons();
+	translate([-15,-15,0]) rotate([0,0,90]) hold_switch_cover();
+}
+
+//printable_front();
+//printable_back();
+printable_buttons();
+//printable();
+
 //assembly();
+//button_mushroom();
+//volume_buttons();

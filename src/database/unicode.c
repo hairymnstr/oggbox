@@ -79,7 +79,7 @@ char *utf8_strncpy(char *s1, char *s2, int n) {
   char *c = s1;
   int count = 0;
   int v;
-  char *r;
+  const char *r;
   int l;
   while(count < n) {
     if((*s2) == 0) {
