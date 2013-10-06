@@ -7,6 +7,8 @@
 #define DOWN_BTN_FLAG   (1 << 3)
 #define LEFT_BTN_FLAG   (1 << 4)
 #define RIGHT_BTN_FLAG  (1 << 5)
+#define VOL_UP_BTN_FLAG (1 << 6)
+#define VOL_DN_BTN_FLAG (1 << 7)
 
 #define DISPLAY_MODE_PREVIOUS           0
 #define DISPLAY_MODE_NOW_PLAYING        1

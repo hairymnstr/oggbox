@@ -32,6 +32,7 @@ void hardware_setup() {
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPDEN);
   rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_AFIOEN);
+  rcc_peripheral_enable_clock(&RCC_APB1ENR, RCC_APB1ENR_PWREN);
 
   /* set the AUX_POWER line to on all the time, turning this off causes an error
      condition on the SPI bus to the CODEC.  In RevB this line is used for sensing
@@ -62,10 +63,6 @@ static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
     }
 }
 
-void aux_power_on() {
-  gpio_set(AUX_POWER_PORT, AUX_POWER_PIN);
-}
-
 int main(void) {
   int r, i, mounted=0;
   uint8_t buffer[512];
@@ -75,7 +72,7 @@ int main(void) {
   usart_clock_setup();
   usart_setup();
         
-  aux_power_on();
+  power_aux_on();
 
   // setup the systick counter for timeouts etc.
 //   systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);

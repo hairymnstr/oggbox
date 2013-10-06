@@ -155,7 +155,11 @@ void interface_main_menu(int buttons) {
   if(buttons & DOWN_BTN_FLAG) {
     option = (option + 1) % option_count;
   } else if(buttons & UP_BTN_FLAG) {
-    option = (option - 1) % option_count;
+    if(option > 0) {
+      option --;
+    } else {
+      option = option_count-1;
+    }
   } else if(buttons & MENU_BTN_FLAG) {
     option = 0;
     set_display_mode(DISPLAY_MODE_PREVIOUS);
@@ -192,12 +196,44 @@ void interface_settings(int buttons) {
   }
 }
 
+int check_buttons() {
+  int buttons = 0;
+  
+  if(gpio_get(VOL_UP_PORT, VOL_UP_PIN)) {
+    buttons |= VOL_UP_BTN_FLAG;
+  }
+  if(gpio_get(VOL_DOWN_PORT, VOL_DOWN_PIN)) {
+    buttons |= VOL_DN_BTN_FLAG;
+  }
+  if(gpio_get(MENU_BTN_PORT, MENU_BTN_PIN)) {
+    buttons |= MENU_BTN_FLAG;
+  }
+  if(gpio_get(SET_BTN_PORT, SET_BTN_PIN)) {
+    buttons |= SET_BTN_FLAG;
+  }
+  if(gpio_get(UP_BTN_PORT, UP_BTN_PIN)) {
+    buttons |= UP_BTN_FLAG;
+  }
+  if(gpio_get(DOWN_BTN_PORT, DOWN_BTN_PIN)) {
+    buttons |= DOWN_BTN_FLAG;
+  }
+  if(gpio_get(LEFT_BTN_PORT, LEFT_BTN_PIN)) {
+    buttons |= LEFT_BTN_FLAG;
+  }
+  if(gpio_get(RIGHT_BTN_PORT, RIGHT_BTN_PIN)) {
+    buttons |= RIGHT_BTN_FLAG;
+  }
+  return buttons;
+}
+
 static void interface_task(void *parameter __attribute__((unused))) {
   int volume = 16;
   char msg[30];
   int buttons;
-  struct player_job player_job_to_do;
   int mode;
+  struct player_job player_job_to_do;
+  uint32_t last_ui_update=0;
+  uint32_t off_timer = 0;
   
   screen_init();
   
@@ -208,77 +244,66 @@ static void interface_task(void *parameter __attribute__((unused))) {
   set_display_mode(DISPLAY_MODE_NOW_PLAYING);
   set_display_mode(DISPLAY_MODE_NOW_PLAYING);
   while(1) {
-    // check the buttons
-    // volume controls are asynchronous, they always do the same thing regardless of display
-    // context
-    if(gpio_get(VOL_UP_PORT, VOL_UP_PIN)) {
-      if(volume > 0)
-        volume--;
-      player_job_to_do.type = PLAYER_VOLUME_COMMAND;
-      player_job_to_do.data = volume | (volume << 8);
-      xQueueSendToBack(player_queue, &player_job_to_do, 0);
-    }
-    if(gpio_get(VOL_DOWN_PORT, VOL_DOWN_PIN)) {
-      if(volume < 0xFD)
-        volume++;
-      player_job_to_do.type = PLAYER_VOLUME_COMMAND;
-      player_job_to_do.data = volume | (volume << 8);
-      xQueueSendToBack(player_queue, &player_job_to_do, 0);
+    
+    buttons = check_buttons();
+    
+    // check for press & hold on up button to power off
+    if(buttons & UP_BTN_FLAG) {
+      if(xTaskGetTickCount() - off_timer > 3000) {
+        power_sleep();
+      }
+    } else {
+      off_timer = xTaskGetTickCount();
     }
     
-    // other buttons are just checked all at once here then passed through to the current
-    // display function
-    buttons = 0;
-    if(gpio_get(MENU_BTN_PORT, MENU_BTN_PIN)) {
-      buttons |= MENU_BTN_FLAG;
-    }
-    if(gpio_get(SET_BTN_PORT, SET_BTN_PIN)) {
-      buttons |= SET_BTN_FLAG;
-    }
-    if(gpio_get(UP_BTN_PORT, UP_BTN_PIN)) {
-      buttons |= UP_BTN_FLAG;
-    }
-    if(gpio_get(DOWN_BTN_PORT, DOWN_BTN_PIN)) {
-      buttons |= DOWN_BTN_FLAG;
-    }
-    if(gpio_get(LEFT_BTN_PORT, LEFT_BTN_PIN)) {
-      buttons |= LEFT_BTN_FLAG;
-    }
-    if(gpio_get(RIGHT_BTN_PORT, RIGHT_BTN_PIN)) {
-      buttons |= RIGHT_BTN_FLAG;
-    }
-    
-    // update the screen
-    
-    frame_clear();
-    
-    if(usb_get_status() == USB_STATUS_ACTIVE) {
-      frame_print_at(20, 100, "data");
-    } else if(usb_get_status() == USB_STATUS_CHARGER) {
-      frame_print_at(11, 100, "charger");
+    if(xTaskGetTickCount() - last_ui_update >= 100) {
+      
+      if(buttons & VOL_UP_BTN_FLAG) {
+        if(volume > 0)
+          volume--;
+        player_job_to_do.type = PLAYER_VOLUME_COMMAND;
+        player_job_to_do.data = volume | (volume << 8);
+        xQueueSendToBack(player_queue, &player_job_to_do, 0);
+      }
+      if(buttons & VOL_DN_BTN_FLAG) {
+        if(volume < 0xFD)
+          volume++;
+        player_job_to_do.type = PLAYER_VOLUME_COMMAND;
+        player_job_to_do.data = volume | (volume << 8);
+        xQueueSendToBack(player_queue, &player_job_to_do, 0);
+      }
+      // update the screen
+      
+      frame_clear();
+      
+      if(usb_get_status() == USB_STATUS_ACTIVE) {
+        frame_print_at(20, 100, "data");
+      } else if(usb_get_status() == USB_STATUS_CHARGER) {
+        frame_print_at(11, 100, "charger");
+      }
+        
+      
+      sniprintf(msg, 10, "%3d.%ddB", -1 * (volume / 2), ((volume & 1) * 5));
+      frame_print_at(8, 112,msg);
+      sniprintf(msg, 10, "%d.%03dV", power_latest_battery() / 1000, power_latest_battery() % 1000);
+      frame_print_at(14,120,msg);
+      
+      mode = get_display_mode();
+      if(mode == DISPLAY_MODE_NOW_PLAYING) {
+        interface_now_playing(buttons);
+      } else if(mode == DISPLAY_MODE_MENU) {
+        interface_main_menu(buttons);
+      } else if(mode == DISPLAY_MODE_MEDIA) {
+        interface_media(buttons);
+      } else if(mode == DISPLAY_MODE_PLAYLIST) {
+        interface_playlist(buttons);
+      } else if(mode == DISPLAY_MODE_SETTINGS) {
+        interface_settings(buttons);
+      }
+      frame_show();
+      last_ui_update = xTaskGetTickCount();
     }
       
-    
-    sniprintf(msg, 10, "%3d.%ddB", -1 * (volume / 2), ((volume & 1) * 5));
-    frame_print_at(8, 112,msg);
-    sniprintf(msg, 10, "%d.%03dV", power_latest_battery() / 1000, power_latest_battery() % 1000);
-    frame_print_at(14,120,msg);
-    
-    mode = get_display_mode();
-    if(mode == DISPLAY_MODE_NOW_PLAYING) {
-      interface_now_playing(buttons);
-    } else if(mode == DISPLAY_MODE_MENU) {
-      interface_main_menu(buttons);
-    } else if(mode == DISPLAY_MODE_MEDIA) {
-      interface_media(buttons);
-    } else if(mode == DISPLAY_MODE_PLAYLIST) {
-      interface_playlist(buttons);
-    } else if(mode == DISPLAY_MODE_SETTINGS) {
-      interface_settings(buttons);
-    }
-    frame_show();
-    
-    vTaskDelay(100);
   }
   // interface loop shouldn't exit
 }

@@ -1,6 +1,8 @@
 #include <libopencm3/stm32/f1/gpio.h>
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/adc.h>
+#include <libopencm3/stm32/f1/pwr.h>
+#include <libopencm3/cm3/scb.h>
 
 #include <stdio.h>
 
@@ -52,6 +54,36 @@ void power_init() {
 void power_shutdown() {
   // disable the clocks used for battery reading
   
+}
+
+void power_aux_on() {
+  gpio_set(AUX_POWER_PORT, AUX_POWER_PIN);
+}
+
+
+void power_aux_off() {
+  gpio_clear(AUX_POWER_PORT, AUX_POWER_PIN);
+}
+
+void power_sleep() {
+  // halt everything and put the processor into sleep mode
+  //screen_shutdown();
+  
+  
+  // turn off aux power rails
+  //power_aux_off();
+  
+  // enable the wakeup button
+  pwr_enable_wakeup_pin();
+  
+  // wait for the user to release the button before going into standby
+  while(gpio_get(UP_BTN_PORT, UP_BTN_PIN)) {
+    __asm__("nop\r\n");
+  }
+  pwr_clear_wakeup_flag();              // clear the wake up flag if set
+  pwr_set_standby_mode();               // select standby rather than halt
+  SCB_SCR |= SCB_SCR_SLEEPDEEP;         // set deep sleep mode
+  __asm__("wfi\r\n");                   // halt until something happens
 }
 
 int power_read_battery() {
