@@ -8,6 +8,9 @@
 #include "btree.h"
 
 #define pvPortMalloc malloc
+#define pvPortFree free
+
+void print_node(int id, struct cache_context *ctx);
 
 /*************************************************************************************************/
 /* Node cache system                                                                             */
@@ -29,6 +32,11 @@ void cache_init(const char *cache_file, int cache_size, struct cache_context *no
   node_cache->fd = open(cache_file, O_RDWR | O_CREAT, 0777);
 }
 
+void cache_close(struct cache_context *node_cache) {
+  pvPortFree(node_cache->entries);
+  close(node_cache->fd);
+}
+
 uint32_t cache_new_node(struct cache_context *node_cache) {
 //   printf("New node %d\r\n", node_cache.node_count);
   return node_cache->node_count++;
@@ -39,6 +47,7 @@ int cache_save_node(uint32_t node_id, Node *node, struct cache_context *node_cac
   int lru_id;
   int lru_val;
   
+  printf("Save node %d\r\n", node_id);
   if(node_id >= node_cache->node_count) {
     return -1;
   }
@@ -47,6 +56,7 @@ int cache_save_node(uint32_t node_id, Node *node, struct cache_context *node_cac
       memcpy(&node_cache->entries[i].node, node, sizeof(Node));
       node_cache->entries[i].dirty = 1;
       node_cache->entries[i].lru = node_cache->lru_val++;
+      printf("Cache hit (w) %d\r\n", node_id);
       return 0;
     }
   }
@@ -60,9 +70,11 @@ int cache_save_node(uint32_t node_id, Node *node, struct cache_context *node_cac
     }
   }
   
+  printf("LRU: %d contains node %d of %d\r\n", lru_id, node_cache->entries[lru_id].id, node_cache->node_count);
   if(node_cache->entries[lru_id].dirty) {
     lseek(node_cache->fd, sizeof(Node) * node_cache->entries[lru_id].id, SEEK_SET);
     write(node_cache->fd, &node_cache->entries[lru_id].node, sizeof(Node));
+    printf("Save %d\r\n", node_cache->entries[lru_id].id);
   }
   
   node_cache->entries[lru_id].dirty = 1;
@@ -78,6 +90,8 @@ int cache_get_node(uint32_t node_id, Node *node, struct cache_context *node_cach
   int lru_id;
   int lru_val;
   
+  printf("Get node %d\r\n", node_id);
+  
   if(node_id >= node_cache->node_count) {
     return -1;  // node id isn't in the database
   }
@@ -85,6 +99,7 @@ int cache_get_node(uint32_t node_id, Node *node, struct cache_context *node_cach
     if(node_cache->entries[i].id == node_id) {
       memcpy(node, &node_cache->entries[i].node, sizeof(Node));
       node_cache->entries[i].lru = node_cache->lru_val++;
+      printf("Cache hit (r) %d\r\n", node_id);
       return 0;
     }
   }
@@ -99,11 +114,15 @@ int cache_get_node(uint32_t node_id, Node *node, struct cache_context *node_cach
     }
   }
   
+  printf("LRU: %d contains node %d of %d (last used %d, current %d)\r\n", lru_id, node_cache->entries[lru_id].id, node_cache->node_count, node_cache->entries[lru_id].lru, node_cache->lru_val);
+//   print_node(node_cache->entries[lru_id].id, node_cache);
   if(node_cache->entries[lru_id].dirty) {
     lseek(node_cache->fd, sizeof(Node) * node_cache->entries[lru_id].id, SEEK_SET);
     write(node_cache->fd, &node_cache->entries[lru_id].node, sizeof(Node));
+    printf("Save %d\r\n", node_cache->entries[lru_id].id);
   }
   // now load the node into cache
+  printf("Load %d\r\n", node_id);
   lseek(node_cache->fd, sizeof(Node) * node_id, SEEK_SET);
   read(node_cache->fd, &node_cache->entries[lru_id].node, sizeof(Node));
   
@@ -112,6 +131,7 @@ int cache_get_node(uint32_t node_id, Node *node, struct cache_context *node_cach
   node_cache->entries[lru_id].dirty = 0;
   memcpy(node, &node_cache->entries[lru_id].node, sizeof(Node));
   
+  print_node(node_id, node_cache);
   return 0;
 }
 
@@ -127,13 +147,19 @@ void btree_init(char *cache_file, int cache_size, struct db_context *c) {
   head.pointers_len = 0;
   head.keys_len = 0;
   head.parent = -1;
-  head.isleaf = 1;
+//   head.isleaf = 1;
   head.leftmost = -1;
   head.minval = -1;
   head.depth = 0;
+  head.sibling_next = -1;
+  head.sibling_prev = -1;
   cache_save_node(c->head, &head, &c->cache);
   
   c->size = 0;
+}
+
+void btree_close(struct db_context *c) {
+  cache_close(&c->cache);
 }
 
 void pointer_shift(int src_pos, uint32_t *src, int dst_pos, uint32_t *dst, int count) {
@@ -249,8 +275,9 @@ int btree_insert(uint32_t ptr, uint64_t key, uint32_t nid, int isdata, struct db
         pointer_shift(METADB_MID_PTR, n.pointers, 0, sibling.pointers, METADB_MID_PTR);
         sibling.pointers_len = METADB_MID_PTR;
         n.pointers_len = METADB_MID_PTR;
-        sibling.isleaf = n.isleaf;    // if this is a leaf the new sibling will be
-        if(!sibling.isleaf) {
+        sibling.depth = n.depth;
+//        sibling.isleaf = n.isleaf;    // if this is a leaf the new sibling will be
+        if(sibling.depth > 0) {
           for(i=0;i<sibling.pointers_len;i++) {
             cache_get_node(sibling.pointers[i], &child, &context->cache);
             child.parent = sibling_id;
@@ -261,7 +288,11 @@ int btree_insert(uint32_t ptr, uint64_t key, uint32_t nid, int isdata, struct db
         sibling.keys_len = METADB_KEY_COUNT;
         n.keys_len = METADB_KEY_COUNT;
         sibling.leftmost = 0;
-        sibling.depth = n.depth;
+        sibling.minval = n.keys[METADB_PASS_KEY];
+        sibling.sibling_next = n.sibling_next;
+        sibling.sibling_prev = nid;
+        n.sibling_next = sibling_id;
+//        sibling.depth = n.depth;
         cache_save_node(sibling_id, &sibling, &context->cache);
         cache_save_node(nid, &n, &context->cache);
         if(n.parent == -1) {
@@ -270,7 +301,7 @@ int btree_insert(uint32_t ptr, uint64_t key, uint32_t nid, int isdata, struct db
           n.parent = cache_new_node(&context->cache);
           cache_save_node(nid, &n, &context->cache);
           child.parent = -1;
-          child.isleaf = 0;
+//           child.isleaf = 0;
           child.leftmost = -1;
           child.pointers[0] = nid;
           sibling.parent = n.parent;
@@ -281,6 +312,8 @@ int btree_insert(uint32_t ptr, uint64_t key, uint32_t nid, int isdata, struct db
           child.keys_len = 1;
           child.minval = n.minval;
           child.depth = n.depth + 1;
+          child.sibling_next = -1;
+          child.sibling_prev = -1;
           context->head = n.parent;
           cache_save_node(n.parent, &child, &context->cache);
         } else {
@@ -295,30 +328,57 @@ int btree_insert(uint32_t ptr, uint64_t key, uint32_t nid, int isdata, struct db
   return 0;
 }
 
-int btree_lookup_recurse(uint64_t sought, uint32_t *sought_id, uint32_t start, struct db_context *context) {
+int btree_lookup(uint64_t sought, uint32_t *sought_id, int row, struct db_context *context) {
+  int nid = context->head;
   Node n;
   int i;
-  
-  cache_get_node(start, &n, &context->cache);
-  for(i=0;i<n.keys_len;i++) {
-    if(sought <= n.keys[i]) {
-      break;
+  char msg[9];
+  int j;
+
+  printf("btree_lookup (head = %d)\r\n", nid);
+  print_node(nid, &context->cache);
+  cache_get_node(nid, &n, &context->cache);
+  while(n.depth > 0) {
+    i = 0;
+    while(i < n.keys_len) {
+      if(n.keys[i] < sought)
+        i++;
+      else
+        break;
     }
+    printf("Descend %d[%d] => %u\r\n", nid, i, n.pointers[i]);
+    nid = n.pointers[i];
+    cache_get_node(nid, &n, &context->cache);
   }
-  if(n.isleaf) {
-    if(n.keys[i] == sought) {
-      *sought_id = n.pointers[i];
-      return 1;
+  
+  // found a leaf node
+  while(1) {
+    
+    if(n.minval == sought) {
+      if(--row == 0) {
+        *sought_id = n.pointers[0];
+        return 1;
+      }
+    } else if(n.minval > sought) {
+      return 0;
+    }
+    for(i=0;i<n.keys_len;i++) {
+      if(n.keys[i] == sought) {
+  
+        if(--row == 0) {
+          *sought_id = n.pointers[i+1];
+          return 1;
+        }
+      } else if(n.keys[i] > sought) {
+        return 0;
+      }
+    }
+    if(n.sibling_next > -1) {
+      cache_get_node(n.sibling_next, &n, &context->cache);
     } else {
       return 0;
     }
-  } else {
-    return btree_lookup_recurse(sought, sought_id, start, context);
   }
-}
-
-int btree_lookup(uint64_t sought, uint32_t *sought_id, struct db_context *context) {
-  return btree_lookup_recurse(sought, sought_id, context->head, context);
 }
 
 int btree_walk(uint32_t *next_id, struct db_context *context) {
@@ -347,7 +407,7 @@ int btree_walk(uint32_t *next_id, struct db_context *context) {
       if(i+1 < n.pointers_len) {
         context->nid = n.pointers[i+1];
         cache_get_node(context->nid, &n, &context->cache);
-        while(!n.isleaf) {
+        while(n.depth > 0) {
           context->nid = n.pointers[0];
           cache_get_node(context->nid, &n, &context->cache);
         }
@@ -411,7 +471,7 @@ void btree_rewind(struct db_context *context) {
   context->pid = 0;
   
   cache_get_node(context->nid, &n, &context->cache);
-  while(!n.isleaf) {
+  while(n.depth > 0) {
     context->nid = n.pointers[0];
     cache_get_node(context->nid, &n, &context->cache);
   }
@@ -571,3 +631,39 @@ void dbgoutput(FILE *fw, uint64_t item,  uint32_t head) {
   return;
 }
 #endif
+
+char *key_to_string(uint64_t val) {
+  static char msg[9];
+  int j;
+  
+  for(j=7;j>-1;j--) {
+    msg[j] = (val >> (8 * (7-j))) & 0xff;
+  }
+  msg[8] = 0;
+    
+  return msg;  
+}
+  
+
+void print_node(int id, struct cache_context *ctx) {
+  Node n;
+  int i;
+  
+  cache_get_node(id, &n, ctx);
+  
+  printf("Node id: %d\r\n", id);
+  printf("Parent: %d\r\n", n.parent);
+  printf("Prev_sibling: %d, Next_sibling: %d\r\n", n.sibling_prev, n.sibling_next);
+  printf("Minval: %s\r\n", key_to_string(n.minval));
+  printf("Keyval: ");
+  for(i=0;i<n.keys_len;i++) {
+    printf("%s ", key_to_string(n.keys[i]));
+  }
+  printf("\r\n");
+  printf("Pointers: ");
+  for(i=0;i<n.pointers_len;i++) {
+    printf("%d ", n.pointers[i]);
+  }
+  printf("\r\n");
+  
+}

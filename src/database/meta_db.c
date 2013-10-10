@@ -30,6 +30,11 @@ struct track_entry {
   char path[META_PATH_LEN];
 };
 
+struct chunk_context {
+  int fd;
+  int next_chunk;
+};
+
 // struct index_entry {
 //   uint32_t id;
 //   uint64_t hash;
@@ -191,6 +196,82 @@ uint64_t database_hash(char *input) {
 //   return 0;
 // }
 
+uint32_t new_album(char *title, struct chunk_context *context) {
+  char buffer[64];
+  uint32_t index = 0;
+  strncpy(buffer, title, 64);
+  
+  lseek(context->fd, context->next_chunk * 512, SEEK_SET);
+  
+  write(context->fd, buffer, 64);        // album title
+  
+  write(context->fd, &index, 4);         // track count
+  
+  return context->next_chunk++;
+}
+
+uint32_t store_album(char *title, struct chunk_context *chnk_ctx, uint32_t *album_count, struct db_context *context) {
+  int row = 1;
+  uint32_t album_id;
+  char buffer[64];
+  
+  while(btree_lookup(database_hash(title), &album_id, row, context)) {
+    row++;
+    lseek(chnk_ctx->fd, 512 * album_id, SEEK_SET);
+    read(chnk_ctx->fd, buffer, 64);
+    printf("Returned\r\n");
+    printf("%s\r\n", buffer);
+    if(strcmp(title, buffer) == 0) {
+      printf("Returned and matched\r\n");
+      return album_id;
+    }
+  }
+  
+  // couldn't find this album in the database.
+  album_id = new_album(title, chnk_ctx);
+  (*album_count)++;
+  btree_insert(album_id, database_hash(title), context->head, 0, context);
+  return album_id;
+}
+
+uint32_t new_artist(char *title, struct chunk_context *context) {
+  char buffer[64];
+  uint32_t index = 0;
+  strncpy(buffer, title, 64);
+  
+  lseek(context->fd, context->next_chunk * 512, SEEK_SET);
+  
+  write(context->fd, buffer, 64);        // artist name
+  
+  write(context->fd, &index, 4);         // number of albums
+  write(context->fd, &index, 4);         // number of separate tracks
+  
+  return context->next_chunk++;
+}
+
+uint32_t store_artist(char *title, struct chunk_context *chnk_ctx, uint32_t *artist_count, struct db_context *context) {
+  int row = 1;
+  uint32_t artist_id;
+  char buffer[64];
+  
+  printf("Store artist %s\r\n", title);
+  while(btree_lookup(database_hash(title), &artist_id, row, context)) {
+    printf("row = %d\r\n", row);
+    row++;
+    lseek(chnk_ctx->fd, 512 * artist_id, SEEK_SET);
+    read(chnk_ctx->fd, buffer, 64);
+    if(strcmp(title, buffer) == 0) {
+      return artist_id;
+    }
+  }
+  printf("New artist\r\n");
+  // couldn't find this artist
+  artist_id = new_artist(title, chnk_ctx);
+  (*artist_count)++;
+  btree_insert(artist_id, database_hash(title), context->head, 0, context);
+  return artist_id;
+}
+
 void drop_folder(char *filename) {
   int i;
   for(i=strlen(filename)-2;i>=0;i--) {
@@ -217,21 +298,34 @@ int store_tracks(char *root_path) {
   struct stat stat_buf;
   //struct index_context idx;
   FILE *fr;
-  int fw;
+  int f_tracks;
+  struct chunk_context album_ctx;
+  struct chunk_context artist_ctx;
   DIR *dr;
   struct dirent *de;
   int entry_no[MAX_NESTED_DIRS];
   char filename[256];
-  uint32_t entry_count=0;
+  uint32_t idx;
   int i=0;
   int depth=0;
-  uint32_t idx;
+  uint32_t track_count = 0;
+  uint32_t artist_count = 0;
+  uint32_t album_count = 0;
   struct db_context c;
+  struct db_context context_album;
+  struct db_context context_artist;
   
   btree_init("/home/nathan/track_cache", 8, &c);
+  btree_init("/home/nathan/album_cache", 8, &context_album);
+  btree_init("/home/nathan/artist_cache", 8, &context_artist);
   dr = opendir(root_path);
-  fw = open("tracks.db", O_WRONLY | O_CREAT, 0777);
-  lseek(fw, sizeof(uint32_t), SEEK_SET);
+  f_tracks = open("tracks.db", O_WRONLY | O_CREAT, 0777);
+  artist_ctx.fd = open("artists.db", O_RDWR | O_CREAT, 0777);
+  artist_ctx.next_chunk = 1;
+  album_ctx.fd = open("albums.db", O_RDWR | O_CREAT, 0777);
+  album_ctx.next_chunk = 1;
+  
+  lseek(f_tracks, 4, SEEK_SET);
   
   for(i=0;i<MAX_NESTED_DIRS;i++) {
     entry_no[i] = 0;
@@ -261,26 +355,29 @@ int store_tracks(char *root_path) {
             read_standard_tags(fr, &meta_info);
 
             strncpy(track.title, meta_info.title, 64);
-            track.album = 0;
-            track.artist = 0;
+            printf("Save album\r\n");
+            track.album = store_album(meta_info.album, &album_ctx, &album_count, &context_album);
+            printf("Save artist\r\n");
+            track.artist = store_artist(meta_info.artist, &artist_ctx, &artist_count, &context_artist);
+            printf("Save track\r\n");
             track.track_no = meta_info.track;
             track.date = meta_info.date;
             track.disc_no = meta_info.disc;
             strncpy(track.path, filename, META_PATH_LEN);
             fseek(fr, 0, SEEK_SET);
             track.length = ogg_track_length_millis(fr);
-//             printf("name %s (%d) %s\r\n", track.path, (int)strlen(track.path), track.title);
+            printf("name %s (%d) %s\r\n", track.path, (int)strlen(track.path), track.title);
 //             printf("album %d\r\n", track.album);
 //             printf("artist %d\r\n", track.artist);
 //             printf("track_no %d\r\n", track.track_no);
 //             printf("length %d\r\n", track.length);
 //             printf("date %d\r\n", track.date);
 //             printf("disc_no %d\r\n", track.disc_no);
-            write(fw, &track, sizeof(track));
+            write(f_tracks, &track, sizeof(track));
 //             printf("Index entry [%d] => %lu\r\n", i, database_hash(track.title));
             //db_index_append(&idx, entry_count, database_hash(track.title));
 //             printf("Entry %d\r\n", entry_count);
-            btree_insert(entry_count, database_hash(track.title), c.head, 0, &c);
+            btree_insert(track_count, database_hash(track.title), c.head, 0, &c);
 //             if(entry_count == 214) {
 //               
 //   FILE *fff = fopen("wibble214.html", "w");
@@ -300,7 +397,7 @@ int store_tracks(char *root_path) {
 //               exit(1);
 //             }
             fclose(fr);
-            entry_count++;
+            track_count++;
           }
           directory_part(filename);
 //           printf("5 %s\r\n", filename);
@@ -335,7 +432,19 @@ int store_tracks(char *root_path) {
   
   btree_rewind(&c);
   while(btree_walk(&idx, &c)) {
-    write(fw, &idx, 4);
+    write(f_tracks, &idx, 4);
+  }
+  
+  btree_rewind(&context_album);
+  lseek(album_ctx.fd, album_ctx.next_chunk * 512, SEEK_SET);
+  while(btree_walk(&idx, &context_album)) {
+    write(album_ctx.fd, &idx, 4);
+  }
+  
+  btree_rewind(&context_artist);
+  lseek(artist_ctx.fd, artist_ctx.next_chunk * 512, SEEK_SET);
+  while(btree_walk(&idx, &context_artist)) {
+    write(artist_ctx.fd, &idx, 4);
   }
   /*
   dump_leaves(&c);
@@ -352,12 +461,24 @@ int store_tracks(char *root_path) {
 // //     printf("]\r\n");
 //   }
   
-  lseek(fw, 0, SEEK_SET);
-  write(fw, &entry_count, sizeof(entry_count));
+  lseek(f_tracks, 0, SEEK_SET);
+  write(f_tracks, &track_count, sizeof(track_count));
   
-  printf("Stored %d tracks\r\n", entry_count);
+  lseek(artist_ctx.fd, 0, SEEK_SET);
+  write(artist_ctx.fd, &artist_ctx.next_chunk, 4);
   
-  close(fw);
+  lseek(album_ctx.fd, 0, SEEK_SET);
+  write(album_ctx.fd, &album_ctx.next_chunk, 4);
+  
+  printf("Stored %d tracks\r\n", track_count);
+  
+  close(f_tracks);
+  close(album_ctx.fd);
+  close(artist_ctx.fd);
+ 
+  btree_close(&c);
+  btree_close(&context_album);
+  btree_close(&context_artist);
   return 0;
 }
 

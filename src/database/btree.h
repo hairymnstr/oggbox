@@ -14,11 +14,12 @@ typedef struct Snode {
   int pointers_len;
   uint64_t keys[METADB_NODE_SIZE];
   int keys_len;
-  uint32_t parent;
-  int isleaf;
+  int32_t parent;
   int leftmost;
   uint64_t minval;
   int depth;
+  int32_t sibling_next;
+  int32_t sibling_prev;
 } Node;
 
 struct cache_entry {
@@ -50,7 +51,7 @@ int cache_get_node(uint32_t node_id, Node *output, struct cache_context *node_ca
 
 void btree_init(char *cache_file, int cache_size, struct db_context *);
 int btree_insert(uint32_t, uint64_t, uint32_t, int, struct db_context *);
-int btree_lookup(uint64_t sought, uint32_t *sought_id, struct db_context *context);
+int btree_lookup(uint64_t sought, uint32_t *sought_id, int row, struct db_context *context);
 int btree_walk(uint32_t *next_id, struct db_context *);
 void btree_rewind(struct db_context *);
 
