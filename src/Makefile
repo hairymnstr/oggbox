@@ -23,19 +23,18 @@ CC		= $(PREFIX)-gcc
 LD		= $(PREFIX)-gcc
 OBJCOPY		= $(PREFIX)-objcopy
 OBJDUMP		= $(PREFIX)-objdump
-TOOLCHAIN_DIR	= /usr/$(PREFIX)
-CFLAGS		+= -Os -g -Wall -Wextra -I$(TOOLCHAIN_DIR)/include -Ilibopencm3-freertos/include \
+CFLAGS		+= -Os -g -Wall -Wextra -Ilibopencm3/include \
 		   -IFreeRTOS/Source/include -I./ -IFreeRTOS/Source/portable/GCC/ARM_CM3\
 		   -fno-common -mcpu=cortex-m3 -mthumb -msoft-float -MD -DSTM32F1
 LDSCRIPT	?= $(BINARY).ld
 LDFLAGS		+= -Wl,--start-group -lc -lgcc -Wl,--end-group \
-		   -L$(TOOLCHAIN_DIR)/lib -Llibopencm3-freertos/lib \
+		   -Llibopencm3/lib \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
 OBJS		+= main.o vs1053.o block_sd.o fat.o syscalls.o partition.o nd_usart.o \
 		   power.o interface.o screen.o font.o font2.o usb.o ogg_meta.o \
-		   playlist.o dirent.o handler.o \
-		   list.o queue.o tasks.o port.o heap_1.o
+		   playlist.o dirent.o \
+		   list.o queue.o tasks.o port.o heap.o
 
 # Be silent per default, but 'make V=1' will show all compiler calls.
 ifneq ($(V),1)
@@ -53,9 +52,6 @@ all: images
 
 images: $(BINARY).images
 
-handler.o: handler.s
-	$(Q)arm-none-eabi-as -o handler.o -c handler.s
-
 list.o: FreeRTOS/Source/list.c
 	$(Q)$(CC) $(CFLAGS) -o list.o -c FreeRTOS/Source/list.c
 
@@ -68,8 +64,8 @@ queue.o: FreeRTOS/Source/queue.c
 tasks.o: FreeRTOS/Source/tasks.c
 	$(Q)$(CC) $(CFLAGS) -o tasks.o -c FreeRTOS/Source/tasks.c
 
-heap_1.o: FreeRTOS/Source/portable/MemMang/heap_1.c
-	$(Q)$(CC) $(CFLAGS) -o heap_1.o -c FreeRTOS/Source/portable/MemMang/heap_1.c
+heap.o: FreeRTOS/Source/portable/MemMang/heap_3.c
+	$(Q)$(CC) $(CFLAGS) -o heap.o -c FreeRTOS/Source/portable/MemMang/heap_3.c
 
 %.images: %.bin %.hex %.srec %.list
 	@#echo "*** $* images generated ***"
@@ -90,7 +86,10 @@ heap_1.o: FreeRTOS/Source/portable/MemMang/heap_1.c
 	@#printf "  OBJDUMP $(*).list\n"
 	$(Q)$(OBJDUMP) -S $(*).elf > $(*).list
 
-oggbox.elf: $(OBJS) $(LDSCRIPT) libopencm3-freertos/lib/libopencm3_stm32f1.a
+libopencm3/lib/libopencm3_stm32f1.a: Makefile
+	$(Q)$(MAKE) -C libopencm3 TARGETS=stm32/f1
+
+oggbox.elf: libopencm3/lib/libopencm3_stm32f1.a $(OBJS) $(LDSCRIPT)
 	@#printf "  LD      $(subst $(shell pwd)/,,$(@))\n"
 	$(Q)$(LD) -o oggbox.elf $(OBJS) -lopencm3_stm32f1 $(LDFLAGS)
 

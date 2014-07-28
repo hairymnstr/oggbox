@@ -1,10 +1,12 @@
-
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
-#include <libopencm3/stm32/f1/rtc.h>
-#include <libopencm3/cm3/systick.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/rtc.h>
+#include <libopencm3/cm3/systick.h>
+
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"

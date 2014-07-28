@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "nd_usart.h"
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
 
 void usart_clock_setup(void)

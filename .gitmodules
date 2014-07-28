@@ -1,3 +1,3 @@
-[submodule "src/libopencm3-freertos"]
-	path = src/libopencm3-freertos
-	url = git@github.com:hairymnstr/libopencm3-freertos
+[submodule "src/libopencm3"]
+	path = src/libopencm3
+	url = https://github.com/libopencm3/libopencm3.git

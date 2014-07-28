@@ -16,18 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <libopencm3/stm32/spi.h>
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
-#include <libopencm3/stm32/f1/nvic.h>
-#include <libopencm3/stm32/exti.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+
+#include <libopencm3/stm32/spi.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/exti.h>
 
 #include "FreeRTOS.h"
 #include "task.h"

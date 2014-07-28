@@ -132,9 +132,9 @@ void vPortSetupTimerInterrupt( void );
 /*
  * Exception handlers.
  */
-void xPortPendSVHandler( void ) __attribute__ (( naked ));
-void xPortSysTickHandler( void );
-void vPortSVCHandler( void ) __attribute__ (( naked ));
+void pend_sv_handler( void ) __attribute__ (( naked ));
+void sys_tick_handler( void );
+void sv_call_handler( void ) __attribute__ (( naked ));
 
 /*
  * Start first task is a separate function so it can be tested in isolation.
@@ -200,7 +200,7 @@ portSTACK_TYPE *pxPortInitialiseStack( portSTACK_TYPE *pxTopOfStack, pdTASK_CODE
 }
 /*-----------------------------------------------------------*/
 
-void vPortSVCHandler( void )
+void sv_call_handler( void )
 {
 	__asm volatile (
 					"	ldr	r3, pxCurrentTCBConst2		\n" /* Restore the context. */
@@ -374,7 +374,7 @@ __attribute__(( naked )) void vPortClearInterruptMask( unsigned long ulNewMaskVa
 }
 /*-----------------------------------------------------------*/
 
-void xPortPendSVHandler( void )
+void pend_sv_handler( void )
 {
 	/* This is a naked function. */
 
@@ -409,7 +409,7 @@ void xPortPendSVHandler( void )
 }
 /*-----------------------------------------------------------*/
 
-void xPortSysTickHandler( void )
+void sys_tick_handler( void )
 {
 	/* The SysTick runs at the lowest interrupt priority, so when this interrupt
 	executes all interrupts must be unmasked.  There is therefore no need to

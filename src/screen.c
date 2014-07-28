@@ -17,8 +17,8 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/f1/bkp.h>
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/spi.h>
@@ -109,7 +109,8 @@ void screen_init() {
   int i;
   // hardware layout specific optimisations here
   // if you change the pinout these need to be changed
-  rcc_peripheral_enable_clock(&RCC_APB1ENR, RCC_APB1ENR_SPI3EN);
+  rcc_periph_clock_enable(RCC_SPI3);
+  //rcc_peripheral_enable_clock(&RCC_APB1ENR, RCC_APB1ENR_SPI3EN);
   
   gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_10_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, 
