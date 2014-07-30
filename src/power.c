@@ -14,7 +14,7 @@
 #include "config.h"
 
 #define POWER_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define POWER_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2048)
+#define POWER_TASK_STACK_SIZE (2048)
 
 struct power_info power_status = {
   0,
@@ -118,6 +118,7 @@ static void power_management_task(void *parameters __attribute__((unused))) {
   power_init();
   usb_init();   // USB interface is mainly for charging so take care of it here for now
   while(1) {
+    iprintf("Power task\r\n");
     // just keep updating the power status structure so other tasks can query it
     battery_voltage = power_read_battery();
 //     usb_power = power_check_usb();

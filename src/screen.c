@@ -53,10 +53,12 @@ void lcdCommand(unsigned char cmd) {
   gpio_clear(LCD_CS_PORT, LCD_CS_PIN);
   //gpio_set(LCD_E_PORT, LCD_E_PIN);
 
-  spi_write(LCD_SPI, cmd);
+  spi_send(LCD_SPI, cmd);
   
 //   for(i=0;i<100;i++) {__asm__("nop\n\t");}
-  while((SPI_SR(LCD_SPI) & SPI_SR_BSY)) {__asm__("nop");}
+  while(!(SPI_SR(LCD_SPI) & SPI_SR_TXE));
+
+  while((SPI_SR(LCD_SPI) & SPI_SR_BSY));
   //gpio_clear(LCD_E_PORT, LCD_E_PIN);
   gpio_set(LCD_CS_PORT, LCD_CS_PIN);
 
@@ -78,10 +80,11 @@ void lcdData(unsigned char d) {
 
   gpio_clear(LCD_CS_PORT, LCD_CS_PIN);
   //gpio_set(LCD_E_PORT, LCD_E_PIN);
-  spi_write(LCD_SPI, d);
+  spi_send(LCD_SPI, d);
   
+  while(!(SPI_SR(LCD_SPI) & SPI_SR_TXE));
 //   for(i=0;i<100;i++) {__asm__("nop\n\t");}
-  while((SPI_SR(LCD_SPI) & SPI_SR_BSY)) {__asm__("nop");}
+  while((SPI_SR(LCD_SPI) & SPI_SR_BSY));
   //gpio_clear(LCD_E_PORT, LCD_E_PIN);
   gpio_set(LCD_CS_PORT, LCD_CS_PIN);
 
@@ -106,13 +109,13 @@ void lcdData(unsigned char d) {
 // }
 
 void screen_init() {
-  int i;
+  volatile int i;
   // hardware layout specific optimisations here
   // if you change the pinout these need to be changed
   rcc_periph_clock_enable(RCC_SPI3);
   //rcc_peripheral_enable_clock(&RCC_APB1ENR, RCC_APB1ENR_SPI3EN);
   
-  gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_10_MHZ,
+  gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
                 GPIO_CNF_OUTPUT_PUSHPULL, 
                 LCD_RST_PIN | LCD_CS_PIN | LCD_DC_PIN);
 
@@ -137,18 +140,18 @@ void screen_init() {
   spi_set_full_duplex_mode(LCD_SPI);    /* otherwise it's read only */
   spi_enable_software_slave_management(LCD_SPI); /* we want to handle the CS signal in software */
   spi_set_nss_high(LCD_SPI);
-  spi_set_baudrate_prescaler(LCD_SPI, SPI_CR1_BR_FPCLK_DIV_4); /* PCLOCK/256 as clock */
+  spi_set_baudrate_prescaler(LCD_SPI, SPI_CR1_BR_FPCLK_DIV_4);
   spi_set_master_mode(LCD_SPI); /* we want to control everything and generate the clock -> master */
   spi_set_clock_polarity_1(LCD_SPI); /* sck idle state high */
   spi_set_clock_phase_1(LCD_SPI); /* bit is taken on the second (rising edge) of sck */
   spi_disable_ss_output(LCD_SPI);
   spi_enable(LCD_SPI);
     
-  for(i=0;i<10000;i++) {__asm__("nop\n\t");}
+  for(i=0;i<10000;i++);
   
   gpio_set(LCD_RST_PORT, LCD_RST_PIN);
   
-  for(i=0;i<10000;i++) {__asm__("nop\n\t");}
+  for(i=0;i<10000;i++);
   
   lcdCommand(LCD_BIAS_SEVENTH);
   lcdCommand(LCD_DIRECTION_FWD);
@@ -165,7 +168,6 @@ int screen_shutdown() {
   gpio_clear(LCD_RST_PORT, LCD_RST_PIN);
   gpio_clear(LCD_BL_PORT, LCD_BL_PIN);
   spi_disable(LCD_SPI);
-  rcc_peripheral_disable_clock(&RCC_APB1ENR, RCC_APB1ENR_SPI2EN);
   return 0;
 }
 

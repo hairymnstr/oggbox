@@ -22,11 +22,13 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/cm3/nvic.h>
+#include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/exti.h>
 
 #include "FreeRTOS.h"
@@ -40,7 +42,7 @@
 
 
 #define PLAYER_TASK_PRIORITY (tskIDLE_PRIORITY + 3)
-#define PLAYER_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2048)
+#define PLAYER_TASK_STACK_SIZE (2048)
 
 volatile struct player_status current_track;
 volatile int current_track_playing;
@@ -344,7 +346,7 @@ static void player_task(void *parameters __attribute__((unused))) {
           }
         }
       }
-
+      
       gpio_clear(GREEN_LED_PORT, GREEN_LED_PIN);
       if(current_track_playing) {
         vTaskDelay(10);                // yield for a bit

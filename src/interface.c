@@ -14,7 +14,7 @@
 #include "interface.h"
 #include "config.h"
 
-#define INTERFACE_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 2048)
+#define INTERFACE_TASK_STACK_SIZE (2048)
 #define INTERFACE_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
 
 extern xQueueHandle player_queue;
@@ -257,7 +257,7 @@ static void interface_task(void *parameter __attribute__((unused))) {
     }
     
     if(xTaskGetTickCount() - last_ui_update >= 100) {
-      
+      iprintf("Screen update\r\n");      
       if(buttons & VOL_UP_BTN_FLAG) {
         if(volume > 0)
           volume--;

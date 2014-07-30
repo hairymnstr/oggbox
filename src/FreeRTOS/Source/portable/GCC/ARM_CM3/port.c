@@ -641,23 +641,3 @@ __attribute__(( weak )) void vPortSetupTimerInterrupt( void )
 
 #endif /* configASSERT_DEFINED */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -20,8 +20,8 @@
 #include "config.h"
 
 #define mainFLASH_DELAY 1000
-#define LED_TASK_PRIORITY ( tskIDLE_PRIORITY + 0 )
-#define LED_TASK_STACK_SIZE (configMINIMAL_STACK_SIZE + 50)
+#define LED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
+#define LED_TASK_STACK_SIZE (2048)
 
 xQueueHandle player_queue;
 
@@ -62,6 +62,7 @@ static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
             verification. */
         vTaskDelay(1000);
         gpio_toggle(RED_LED_PORT, RED_LED_PIN);
+        iprintf("LED task\r\n");
     }
 }
 
@@ -122,6 +123,3 @@ int main(void) {
   return 0;
 }
 
-void vApplicationTickHook( void ) {
-  
-}

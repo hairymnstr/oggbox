@@ -86,7 +86,7 @@ heap.o: FreeRTOS/Source/portable/MemMang/heap_3.c
 	@#printf "  OBJDUMP $(*).list\n"
 	$(Q)$(OBJDUMP) -S $(*).elf > $(*).list
 
-libopencm3/lib/libopencm3_stm32f1.a: Makefile
+libopencm3/lib/libopencm3_stm32f1.a:
 	$(Q)$(MAKE) -C libopencm3 TARGETS=stm32/f1
 
 oggbox.elf: libopencm3/lib/libopencm3_stm32f1.a $(OBJS) $(LDSCRIPT)

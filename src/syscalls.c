@@ -148,7 +148,7 @@ int _fstat (int fd, struct stat * st) {
   }
 }
 
-caddr_t _sbrk_r(void *reent __attribute__((__unused__)), size_t incr) {
+void *_sbrk_r(void *reent __attribute__((__unused__)), size_t incr) {
   extern char end asm ("end");  // Defined by the linker
   extern char _stack asm ("_stack");
   static char *heap_end;
@@ -165,11 +165,11 @@ caddr_t _sbrk_r(void *reent __attribute__((__unused__)), size_t incr) {
   if(( heap_end + incr ) > &_stack ) {
     write_std_out("heap<>stack collision\r\n", 23);
     //exit(1);
-    return (caddr_t) -1;
+    return NULL;
   }
 
   heap_end += incr;
-  return (caddr_t) prev_heap_end;
+  return (void *)prev_heap_end;
 }
 
 int _isatty(int fd) {
