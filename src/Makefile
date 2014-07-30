@@ -24,17 +24,21 @@ LD		= $(PREFIX)-gcc
 OBJCOPY		= $(PREFIX)-objcopy
 OBJDUMP		= $(PREFIX)-objdump
 CFLAGS		+= -Os -g -Wall -Wextra -Ilibopencm3/include \
-		   -IFreeRTOS/Source/include -I./ -IFreeRTOS/Source/portable/GCC/ARM_CM3\
+		   -IFreeRTOS/Source/include -Iinc -IFreeRTOS/Source/portable/GCC/ARM_CM3\
 		   -fno-common -mcpu=cortex-m3 -mthumb -msoft-float -MD -DSTM32F1
 LDSCRIPT	?= $(BINARY).ld
 LDFLAGS		+= -Wl,--start-group -lc -lgcc -Wl,--end-group \
 		   -Llibopencm3/lib \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
-OBJS		+= main.o vs1053.o block_sd.o fat.o syscalls.o partition.o nd_usart.o \
+VPATH		=  src:FreeRTOS/Source:FreeRTOS/Source/portable/GCC/ARM_CM3:\
+		   FreeRTOS/Source/portable/MemMang
+BUILD_DIR	=  build/
+OBJ_FILES	+= main.o vs1053.o block_sd.o fat.o syscalls.o partition.o nd_usart.o \
 		   power.o interface.o screen.o font.o font2.o usb.o ogg_meta.o \
 		   playlist.o dirent.o \
-		   list.o queue.o tasks.o port.o heap.o
+		   list.o queue.o tasks.o port.o heap_3.o
+OBJS		=  $(OBJ_FILES:%.o=$(BUILD_DIR)%.o)
 
 # Be silent per default, but 'make V=1' will show all compiler calls.
 ifneq ($(V),1)
@@ -52,48 +56,51 @@ all: images
 
 images: $(BINARY).images
 
-list.o: FreeRTOS/Source/list.c
-	$(Q)$(CC) $(CFLAGS) -o list.o -c FreeRTOS/Source/list.c
+#list.o: FreeRTOS/Source/list.c
+#	$(Q)$(CC) $(CFLAGS) -o list.o -c FreeRTOS/Source/list.c
 
-port.o: FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
-	$(Q)$(CC) $(CFLAGS) -o port.o -c FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
+#port.o: FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
+#	$(Q)$(CC) $(CFLAGS) -o port.o -c FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
 
-queue.o: FreeRTOS/Source/queue.c
-	$(Q)$(CC) $(CFLAGS) -o queue.o -c FreeRTOS/Source/queue.c
+#queue.o: FreeRTOS/Source/queue.c
+#	$(Q)$(CC) $(CFLAGS) -o queue.o -c FreeRTOS/Source/queue.c
 
-tasks.o: FreeRTOS/Source/tasks.c
-	$(Q)$(CC) $(CFLAGS) -o tasks.o -c FreeRTOS/Source/tasks.c
+#tasks.o: FreeRTOS/Source/tasks.c
+#	$(Q)$(CC) $(CFLAGS) -o tasks.o -c FreeRTOS/Source/tasks.c
 
-heap.o: FreeRTOS/Source/portable/MemMang/heap_3.c
-	$(Q)$(CC) $(CFLAGS) -o heap.o -c FreeRTOS/Source/portable/MemMang/heap_3.c
+#heap.o: FreeRTOS/Source/portable/MemMang/heap_3.c
+#	$(Q)$(CC) $(CFLAGS) -o heap.o -c FreeRTOS/Source/portable/MemMang/heap_3.c
 
-%.images: %.bin %.hex %.srec %.list
+$(BUILD_DIR):
+	$(Q)mkdir $(BUILD_DIR)
+
+%.images: %.bin %.hex
 	@#echo "*** $* images generated ***"
 
-%.bin: %.elf
+%.bin: $(BUILD_DIR)%.elf
 	@#printf "  OBJCOPY $(*).bin\n"
-	$(Q)$(OBJCOPY) -Obinary $(*).elf $(*).bin
+	$(Q)$(OBJCOPY) -Obinary $(BUILD_DIR)$(*).elf $(*).bin
 
-%.hex: %.elf
+%.hex: $(BUILD_DIR)%.elf
 	@#printf "  OBJCOPY $(*).hex\n"
-	$(Q)$(OBJCOPY) -Oihex $(*).elf $(*).hex
+	$(Q)$(OBJCOPY) -Oihex $(BUILD_DIR)$(*).elf $(*).hex
 
-%.srec: %.elf
+%.srec: $(BUILD_DIR)%.elf
 	@#printf "  OBJCOPY $(*).srec\n"
-	$(Q)$(OBJCOPY) -Osrec $(*).elf $(*).srec
+	$(Q)$(OBJCOPY) -Osrec $(BUILD_DIR)$(*).elf $(*).srec
 
-%.list: %.elf
+%.list: $(BUILD_DIR)%.elf
 	@#printf "  OBJDUMP $(*).list\n"
-	$(Q)$(OBJDUMP) -S $(*).elf > $(*).list
+	$(Q)$(OBJDUMP) -S $(BUILD_DIR)$(*).elf > $(*).list
 
 libopencm3/lib/libopencm3_stm32f1.a:
 	$(Q)$(MAKE) -C libopencm3 TARGETS=stm32/f1
 
-oggbox.elf: libopencm3/lib/libopencm3_stm32f1.a $(OBJS) $(LDSCRIPT)
+$(BUILD_DIR)%.elf: libopencm3/lib/libopencm3_stm32f1.a $(OBJS) $(LDSCRIPT)
 	@#printf "  LD      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(LD) -o oggbox.elf $(OBJS) -lopencm3_stm32f1 $(LDFLAGS)
+	$(Q)$(LD) -o $@ $(OBJS) -lopencm3_stm32f1 $(LDFLAGS)
 
-%.o: %.c Makefile
+$(BUILD_DIR)%.o: %.c Makefile | $(BUILD_DIR)
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
 	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
 
@@ -105,6 +112,7 @@ clean:
 	$(Q)rm -f *.hex
 	$(Q)rm -f *.srec
 	$(Q)rm -f *.list
+	$(Q)rm -rf $(BUILD_DIR)
 
 # always uses the same serial adapter no matter what order it was plugged in
 install: $(BINARY).hex
