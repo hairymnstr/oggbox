@@ -1,0 +1,3 @@
+[submodule "src/lib/gristle"]
+	path = src/lib/gristle
+	url = git@github.com:hairymnstr/gristle
