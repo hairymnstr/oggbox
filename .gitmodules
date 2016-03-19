@@ -1,5 +1,5 @@
-[submodule "src/lib/gristle"]
-	path = src/lib/gristle
+[submodule "firmware/lib/gristle"]
+	path = firmware/lib/gristle
 	url = git@github.com:hairymnstr/gristle
 [submodule "firmware/lib/libopencm3"]
 	path = firmware/lib/libopencm3
