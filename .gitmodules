@@ -4,3 +4,6 @@
 [submodule "firmware/lib/freertos"]
 	path = firmware/lib/freertos
 	url = git@github.com:hairymnstr/freertos-cortex
+[submodule "firmware/lib/gristle"]
+	path = firmware/lib/gristle
+	url = git@github.com:hairymnstr/gristle
