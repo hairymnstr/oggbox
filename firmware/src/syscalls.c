@@ -36,40 +36,6 @@ const char *seek_str[] = {
   "SEEK_END",
 };
 
-void hard_fault_handler_c( uint32_t *pulFaultStackAddress )
-{
-/* These are volatile to try and prevent the compiler/linker optimising them
-away as the variables never actually get used.  If the debugger won't show the
-values of the variables, make them global my moving their declaration outside
-of this function. */
-volatile uint32_t r0;
-volatile uint32_t r1;
-volatile uint32_t r2;
-volatile uint32_t r3;
-volatile uint32_t r12;
-volatile uint32_t lr; /* Link register. */
-volatile uint32_t pc; /* Program counter. */
-volatile uint32_t psr;/* Program status register. */
-
-    r0 = pulFaultStackAddress[ 0 ];
-    r1 = pulFaultStackAddress[ 1 ];
-    r2 = pulFaultStackAddress[ 2 ];
-    r3 = pulFaultStackAddress[ 3 ];
-
-    r12 = pulFaultStackAddress[ 4 ];
-    lr = pulFaultStackAddress[ 5 ];
-    pc = pulFaultStackAddress[ 6 ];
-    psr = pulFaultStackAddress[ 7 ];
-
-    write_std_out("hard fault ", 11);
-    print_reg(pc);
-    write_std_out("\r\n", 2);
-    /* When the following line is hit, the variables contain the register values. */
-    while(1) {
-      __asm__("nop");
-    }
-}
-
 void vApplicationStackOverflowHook( xTaskHandle xTask,
                                     signed portCHAR *pcTaskName ) {
   write_std_out("Stack overflow detected\r\n", 25);
@@ -148,28 +114,25 @@ int _fstat (int fd, struct stat * st) {
   }
 }
 
+#define HEAP_SIZE (32 * 1024)
+uint8_t heap_storage[HEAP_SIZE];    // half of our 64k SRAM
 void *_sbrk_r(void *reent __attribute__((__unused__)), size_t incr) {
-  extern char end asm ("end");  // Defined by the linker
-  extern char _stack asm ("_stack");
-  static char *heap_end;
-  char *prev_heap_end;
+    static uint8_t *heap_end = heap_storage;
+    uint8_t *prev_heap_end;
 
-  write_std_out("_sbrk", 5);
-  usart_dec_u16((uint16_t)incr);
-  write_std_out("\r\n", 2);
+    write_std_out("_sbrk", 5);
+    usart_dec_u16((uint16_t)incr);
+    write_std_out("\r\n", 2);
 
-  if( heap_end == NULL )
-    heap_end = &end;
-  prev_heap_end = heap_end;
+    prev_heap_end = heap_end;
 
-  if(( heap_end + incr ) > &_stack ) {
-    write_std_out("heap<>stack collision\r\n", 23);
-    //exit(1);
-    return NULL;
-  }
+    if((heap_end + incr) > &heap_storage[HEAP_SIZE]) {
+        write_std_out("heap exhausted\r\n", 16);
+        return NULL;
+    }
 
-  heap_end += incr;
-  return (void *)prev_heap_end;
+    heap_end += incr;
+    return (void *)prev_heap_end;
 }
 
 int _isatty(int fd) {

@@ -14,7 +14,7 @@
 #include "interface.h"
 #include "config.h"
 
-#define INTERFACE_TASK_STACK_SIZE (2048)
+#define INTERFACE_TASK_STACK_SIZE 1024
 #define INTERFACE_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
 
 extern xQueueHandle player_queue;
@@ -305,9 +305,10 @@ static void interface_task(void *parameter __attribute__((unused))) {
     }
       
   }
+  configASSERT(0);
   // interface loop shouldn't exit
 }
 
 void start_interface_task() {
-  iprintf("Start interface %ld\r\n", xTaskCreate( interface_task, (const signed char * const)"INTERFACE", INTERFACE_TASK_STACK_SIZE, NULL, INTERFACE_TASK_PRIORITY, NULL));
+    configASSERT(xTaskCreate(interface_task, "INTERFACE", INTERFACE_TASK_STACK_SIZE, NULL, INTERFACE_TASK_PRIORITY, NULL) == pdPASS);
 }

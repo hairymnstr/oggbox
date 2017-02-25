@@ -61,7 +61,7 @@ uint8_t spi_msg(uint8_t dat) {
   return spi_xfer(CODEC_SPI, dat);
 }
 
-void init_codec() {
+void init_codec(void) {
   /* enable SPI1 clock */
   rcc_peripheral_enable_clock(&CODEC_SPI_APB, CODEC_RCC_SPI);
   /* enable clock for the chip select pin */
@@ -182,13 +182,12 @@ static void player_task(void *parameters __attribute__((unused))) {
   struct player_job job_to_do;
   struct meta metainfo;
   int jobs_serviced;
-//   char filename[] = "/20lbSo~1.ogg";
-//   char filename[] = "/06-Fol~1.ogg";
-//   char filename[] = "/outro.ogg";
   char filename[14];
   char *file;
   // do setup stuff
+  iprintf("Player init\r\n");
   init_codec();
+  iprintf("Player init done\r\n");
   
   while(1) {
     while(!gpio_get(CODEC_DREQ_PORT, CODEC_DREQ)) {__asm__("nop\n\t");}
@@ -354,14 +353,13 @@ static void player_task(void *parameters __attribute__((unused))) {
     }
     fclose(media_fd);
   }
+  configASSERT(0);
   // shouldn't ever exit that loop
 }
 
 
 void start_player_task() {
-  
-  xTaskCreate( player_task, (const signed char * const)"PLAYER", PLAYER_TASK_STACK_SIZE, NULL, PLAYER_TASK_PRIORITY, NULL);
-  
+    configASSERT(xTaskCreate(player_task, "PLAYER", PLAYER_TASK_STACK_SIZE, NULL, PLAYER_TASK_PRIORITY, NULL) == pdPASS);
 }
 
 char *player_get_artist() {

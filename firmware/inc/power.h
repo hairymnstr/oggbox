@@ -13,5 +13,6 @@ void power_set_charge_full();
 void power_set_charge_slow();
 void power_set_charge_none();
 int power_get_usb_present();
+void power_aux_on(void);
 
 #endif /* ifndef POWER_H */

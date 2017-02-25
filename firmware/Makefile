@@ -23,20 +23,22 @@ CC		= $(PREFIX)-gcc
 LD		= $(PREFIX)-gcc
 OBJCOPY		= $(PREFIX)-objcopy
 OBJDUMP		= $(PREFIX)-objdump
-CFLAGS		+= -Os -g -Wall -Wextra -Ilibopencm3/include \
-		   -IFreeRTOS/Source/include -Iinc -IFreeRTOS/Source/portable/GCC/ARM_CM3\
-		   -fno-common -mcpu=cortex-m3 -mthumb -msoft-float -MD -DSTM32F1
+ARCH_FLAGS	=  -mcpu=cortex-m3 -mthumb -msoft-float
+INCLUDES	=  -Ilib/libopencm3/include -Ilib/freertos/Source/include -Iinc \
+		   -Ilib/freertos/Source/portable/GCC/ARM_CM3 -Ilib/gristle/src
+CFLAGS		+= -Os -g -Wall -Wextra $(INCLUDES) $(ARCH_FLAGS) \
+		   -fno-common -MD -DSTM32F1
 LDSCRIPT	?= $(BINARY).ld
 LDFLAGS		+= -Wl,--start-group -lc -lgcc -Wl,--end-group \
-		   -Llibopencm3/lib \
+		   -Llib/libopencm3/lib \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -march=armv7 -mfix-cortex-m3-ldrd -msoft-float
-VPATH		=  src:FreeRTOS/Source:FreeRTOS/Source/portable/GCC/ARM_CM3:\
-		   FreeRTOS/Source/portable/MemMang
+VPATH		=  src:lib/freertos/Source:lib/freertos/Source/portable/GCC/ARM_CM3:\
+		   lib/freertos/Source/portable/MemMang:lib/gristle/src
 BUILD_DIR	=  build/
-OBJ_FILES	+= main.o vs1053.o block_sd.o fat.o syscalls.o partition.o nd_usart.o \
-		   power.o interface.o screen.o font.o font2.o usb.o ogg_meta.o \
-		   playlist.o dirent.o \
+OBJ_FILES	+= main.o vs1053.o block_sd.o gristle.o syscalls.o partition.o nd_usart.o \
+		   power.o interface.o screen.o font.o font2.o ogg_meta.o usb.o \
+		   playlist.o dirent.o fault_handlers.o \
 		   list.o queue.o tasks.o port.o heap_3.o
 OBJS		=  $(OBJ_FILES:%.o=$(BUILD_DIR)%.o)
 
@@ -56,20 +58,7 @@ all: images
 
 images: $(BINARY).images
 
-#list.o: FreeRTOS/Source/list.c
-#	$(Q)$(CC) $(CFLAGS) -o list.o -c FreeRTOS/Source/list.c
-
-#port.o: FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
-#	$(Q)$(CC) $(CFLAGS) -o port.o -c FreeRTOS/Source/portable/GCC/ARM_CM3/port.c
-
-#queue.o: FreeRTOS/Source/queue.c
-#	$(Q)$(CC) $(CFLAGS) -o queue.o -c FreeRTOS/Source/queue.c
-
-#tasks.o: FreeRTOS/Source/tasks.c
-#	$(Q)$(CC) $(CFLAGS) -o tasks.o -c FreeRTOS/Source/tasks.c
-
-#heap.o: FreeRTOS/Source/portable/MemMang/heap_3.c
-#	$(Q)$(CC) $(CFLAGS) -o heap.o -c FreeRTOS/Source/portable/MemMang/heap_3.c
+asm: $(BINARY).asm
 
 $(BUILD_DIR):
 	$(Q)mkdir $(BUILD_DIR)
@@ -85,6 +74,9 @@ $(BUILD_DIR):
 	@#printf "  OBJCOPY $(*).hex\n"
 	$(Q)$(OBJCOPY) -Oihex $(BUILD_DIR)$(*).elf $(*).hex
 
+%.asm: $(BUILD_DIR)%.elf
+	$(Q)$(OBJDUMP) -d $(BUILD_DIR)$(*).elf > $(*).asm
+
 %.srec: $(BUILD_DIR)%.elf
 	@#printf "  OBJCOPY $(*).srec\n"
 	$(Q)$(OBJCOPY) -Osrec $(BUILD_DIR)$(*).elf $(*).srec
@@ -93,14 +85,18 @@ $(BUILD_DIR):
 	@#printf "  OBJDUMP $(*).list\n"
 	$(Q)$(OBJDUMP) -S $(BUILD_DIR)$(*).elf > $(*).list
 
-libopencm3/lib/libopencm3_stm32f1.a:
-	$(Q)$(MAKE) -C libopencm3 TARGETS=stm32/f1
+lib/libopencm3/lib/libopencm3_stm32f1.a:
+	$(Q)$(MAKE) -C lib/libopencm3 TARGETS=stm32/f1 \
+		DEBUG_FLAGS="-ggdb3 \
+			-Dpend_sv_handler=xPortPendSVHandler \
+			-Dsv_call_handler=vPortSVCHandler \
+			-Dsys_tick_handler=xPortSysTickHandler"
 
-$(BUILD_DIR)%.elf: libopencm3/lib/libopencm3_stm32f1.a $(OBJS) $(LDSCRIPT)
+$(BUILD_DIR)%.elf: lib/libopencm3/lib/libopencm3_stm32f1.a $(OBJS) $(LDSCRIPT)
 	@#printf "  LD      $(subst $(shell pwd)/,,$(@))\n"
 	$(Q)$(LD) -o $@ $(OBJS) -lopencm3_stm32f1 $(LDFLAGS)
 
-$(BUILD_DIR)%.o: %.c Makefile | $(BUILD_DIR)
+$(BUILD_DIR)%.o: %.c Makefile | $(BUILD_DIR) lib/libopencm3/lib/libopencm3_stm32f1.a
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
 	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
 
@@ -119,3 +115,4 @@ install: $(BINARY).hex
 	stm32flash -w $(BINARY).hex -v -g 0x0 /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A3000I6Y-if00-port0
 .PHONY: images clean
 
+-include $(OBJS:.o=.d)

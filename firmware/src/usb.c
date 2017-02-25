@@ -21,7 +21,6 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/cm3/nvic.h>
-#include <libopencm3/stm32/usb.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/cdc.h>
 #include <libopencm3/cm3/systick.h>
@@ -298,12 +297,12 @@ void usb_init() {
   usb_set_status(USB_STATUS_DOWN);
   power_set_charge_slow();
 
-  usbd_dev1 = usbd_init(&stm32f103_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+  usbd_dev1 = usbd_init(&st_usbfs_v1_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
   usbd_register_set_config_callback(usbd_dev1, cdcacm_set_config);
 }
 
 void usb_off() {
-  SET_REG(USB_CNTR_REG, 0);
+//   SET_REG(USB_CNTR_REG, 0);
   rcc_peripheral_disable_clock(&RCC_APB1ENR, RCC_APB1ENR_USBEN);
   gpio_set(USB_DISC_PORT, USB_DISC_PIN);
   nvic_disable_irq(NVIC_USB_LP_CAN_RX0_IRQ);

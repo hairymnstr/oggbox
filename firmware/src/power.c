@@ -14,7 +14,7 @@
 #include "config.h"
 
 #define POWER_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define POWER_TASK_STACK_SIZE (2048)
+#define POWER_TASK_STACK_SIZE 1024
 
 struct power_info power_status = {
   0,
@@ -56,7 +56,7 @@ void power_shutdown() {
   
 }
 
-void power_aux_on() {
+void power_aux_on(void) {
   gpio_set(AUX_POWER_PORT, AUX_POWER_PIN);
 }
 
@@ -67,11 +67,11 @@ void power_aux_off() {
 
 void power_sleep() {
   // halt everything and put the processor into sleep mode
-  //screen_shutdown();
+  screen_shutdown();
   
   
   // turn off aux power rails
-  //power_aux_off();
+  power_aux_off();
   
   // enable the wakeup button
   pwr_enable_wakeup_pin();
@@ -131,11 +131,12 @@ static void power_management_task(void *parameters __attribute__((unused))) {
     
     vTaskDelay(1000);           // only do this once a second
   }
+  configASSERT(0);
   // main loop should never exit
 }
 
 void start_power_management_task() {
-  xTaskCreate( power_management_task, (const signed char * const)"POWER", POWER_TASK_STACK_SIZE, NULL, POWER_TASK_PRIORITY, NULL);
+  configASSERT(xTaskCreate(power_management_task, "POWER", POWER_TASK_STACK_SIZE, NULL, POWER_TASK_PRIORITY, NULL) == pdPASS);
 }
 
 // these functions can be called from other threads

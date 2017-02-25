@@ -6,6 +6,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rtc.h>
 #include <libopencm3/cm3/systick.h>
+#include <libopencm3/cm3/scb.h>
 
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -18,10 +19,11 @@
 #include "power.h"
 #include "interface.h"
 #include "config.h"
+#include "nd_usart.h"
 
 #define mainFLASH_DELAY 1000
 #define LED_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
-#define LED_TASK_STACK_SIZE (2048)
+#define LED_TASK_STACK_SIZE 128
 
 xQueueHandle player_queue;
 
@@ -64,12 +66,16 @@ static void FlashLEDTask( void *pvParameters __attribute__((__unused__))) {
         gpio_toggle(RED_LED_PORT, RED_LED_PIN);
         iprintf("LED task\r\n");
     }
+    configASSERT(0);
 }
 
 int main(void) {
   int r, i, mounted=0;
   uint8_t buffer[512];
   struct partition *part_list;
+  
+  scb_set_priority_grouping(SCB_AIRCR_PRIGROUP_GROUP16_NOSUB);
+  
   hardware_setup();
   /* configure the UART for printf debug console */
   usart_clock_setup();
@@ -109,7 +115,7 @@ int main(void) {
   
   queue_setup();
   
-  xTaskCreate( FlashLEDTask, (const signed char * const)"LED", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, NULL);
+  configASSERT(xTaskCreate(FlashLEDTask, "LED", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, NULL) == pdPASS);
   
   start_player_task();
   
@@ -118,6 +124,9 @@ int main(void) {
   start_interface_task();
   
   vTaskStartScheduler();
+  
+  configASSERT(0);
+  iprintf("Start scheduler failed!\r\n");
 
   // the previous call should never return
   return 0;

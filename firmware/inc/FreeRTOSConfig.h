@@ -65,6 +65,9 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
 /*-----------------------------------------------------------
  * Application specific definitions.
  *
@@ -82,7 +85,7 @@
 #define configUSE_TICK_HOOK			0
 #define configCPU_CLOCK_HZ			( ( unsigned long ) 48000000 )	
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
-#define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 5 )
+#define configMAX_PRIORITIES		( 5 )
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 128 )
 //#define configTOTAL_HEAP_SIZE		( ( size_t ) ( 30 * 1024 ) )
 #define configMAX_TASK_NAME_LEN		( 16 )
@@ -94,6 +97,9 @@
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0
 #define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
+
+void vAssertCalled(const char *file, const char *line);
+#define configASSERT(x) if ((x) == 0) vAssertCalled(__FILE__, TOSTRING(__LINE__))
 
 #define configCHECK_FOR_STACK_OVERFLOW 2
 
@@ -120,7 +126,7 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 priority values, 0 to 15.  This must correspond to the
 configKERNEL_INTERRUPT_PRIORITY setting.  Here 15 corresponds to the lowest
 NVIC value of 255. */
-#define configLIBRARY_KERNEL_INTERRUPT_PRIORITY	15
+#define configLIBRARY_KERNEL_INTERRUPT_PRIORITY	11
 
 #endif /* FREERTOS_CONFIG_H */
 
