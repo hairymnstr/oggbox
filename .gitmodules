@@ -7,3 +7,6 @@
 [submodule "firmware/lib/gristle"]
 	path = firmware/lib/gristle
 	url = git@github.com:hairymnstr/gristle
+[submodule "sch/library"]
+	path = sch/library
+	url = git@github.com:hairymnstr/ndkicadlibrary

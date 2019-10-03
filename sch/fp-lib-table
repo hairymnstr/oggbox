@@ -1,0 +1,10 @@
+(fp_lib_table
+  (lib (name Nathan_Mechanical)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_Mechanical.pretty)(options "")(descr ""))
+  (lib (name Nathan_SMT_Conn)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_SMT_Conn.pretty)(options "")(descr ""))
+  (lib (name Nathan_SMT_Other)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_SMT_Other.pretty)(options "")(descr ""))
+  (lib (name Nathan_SMT_Passive)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_SMT_Passive.pretty)(options "")(descr ""))
+  (lib (name Nathan_SMT_Semis)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_SMT_Semis.pretty)(options "")(descr ""))
+  (lib (name Nathan_THT_Conn)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_THT_Conn.pretty)(options "")(descr ""))
+  (lib (name Nathan_THT_Other)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_THT_Other.pretty)(options "")(descr ""))
+  (lib (name Nathan_THT_Passive)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_THT_Passive.pretty)(options "")(descr ""))
+)

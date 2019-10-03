@@ -1,5 +1,5 @@
-update=Fri 02 Aug 2013 21:51:13 BST
-last_client=cvpcb
+update=Thu 03 Oct 2019 11:05:54 BST
+last_client=kicad
 [general]
 version=1
 [pcbnew]
@@ -38,3 +38,6 @@ version=1
 NetIExt=net
 [cvpcb/libraries]
 EquName1=devcms
+[eeschema]
+version=1
+LibDir=

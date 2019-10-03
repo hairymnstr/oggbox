@@ -11,3 +11,6 @@ test_fat
 *order?.ods
 src/FreeRTOS/Demo
 *.gcode*
+*bak
+sch/fp-info-cache
+sch/rescue-backup
