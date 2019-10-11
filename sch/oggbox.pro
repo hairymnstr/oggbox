@@ -41,3 +41,6 @@ EquName1=devcms
 [eeschema]
 version=1
 LibDir=
+[schematic_editor]
+version=1
+PlotDirectoryName=

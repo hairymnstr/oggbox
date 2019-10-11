@@ -7,4 +7,6 @@
   (lib (name Nathan_THT_Conn)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_THT_Conn.pretty)(options "")(descr ""))
   (lib (name Nathan_THT_Other)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_THT_Other.pretty)(options "")(descr ""))
   (lib (name Nathan_THT_Passive)(type KiCad)(uri ${KIPRJMOD}/library/modules/Nathan_THT_Passive.pretty)(options "")(descr ""))
+  (lib (name legacy_conn)(type Legacy)(uri ${KIPRJMOD}/library/old_modules/connect.mod)(options "")(descr ""))
+  (lib (name legacy_support)(type Legacy)(uri ${KIPRJMOD}/library/old_modules/supports.mod)(options "")(descr ""))
 )
